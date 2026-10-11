@@ -180,3 +180,102 @@ Entry format:
 - **Decision:** The scheduler owns one `RunOutcome` set of values and passes `RunRecord` through its internal steps, with the store deriving the old success flag from the outcome and filling an outcome for old rows; the service-file generator takes intent (restart on crash, minimum restart interval) instead of raw launchd keys; and Notion, Slack, and Granola declare `accepts_pasted_token = True`, which alone decides the paste-token flow, while `paste_token_hint` is only the help text and `auth_type` stays "oauth".
 - **Supersedes:** D-015 (both points); the part of D-006 and D-007 where the hint's presence decides the flow
 - **Recorded in:** feature_list.json F-022, F-024
+
+## D-018 — WhatsApp business updates are read from the WhatsApp Mac app's local database
+
+- **Date:** 2026-10-11
+- **Scope:** feature F-025
+- **Premise:** Many businesses in India send order, delivery and appointment updates on WhatsApp, and the developer wants them in the morning digest. The existing `whatsapp` connector only reads chats exported by hand, so it is never fresh at 07:00, and the digest builds it without an export folder, so it never connects. The live alternative, Baileys, pretends to be WhatsApp Web: that breaks WhatsApp's terms, Baileys users report restriction warnings even without bulk sending, and this repo's roadmap already marks it Blocked after WhatsApp rejected its connections in February 2026. The official WhatsApp Business Cloud API cannot read a personal inbox at all. The WhatsApp Mac app keeps its data in plain SQLite files on disk, the same way the iMessage connector reads `chat.db`, and reading them puts the developer's personal number at no risk.
+- **Decision:** Read WhatsApp messages read-only from the WhatsApp Mac app's local data (`~/Library/Group Containers/group.net.whatsapp.WhatsApp.shared/`); do not use Baileys or hand exports for the digest.
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-025; docs/ARCHITECTURE.md design decisions
+
+## D-019 — A chat counts as a business from WhatsApp's own business records, with approval for profile-only chats
+
+- **Date:** 2026-10-11
+- **Scope:** feature F-025
+- **Premise:** The developer requires personal chats to be strictly excluded, so the digest must know which senders are businesses rather than guess. The Mac app stores this in `Biz/Biz.sqlite`: one table lists accounts with a WhatsApp-certified business name (82 of the developer's 454 one-to-one chats), another lists accounts with only a business profile (117 more). Profile-only accounts are typically small businesses on the WhatsApp Business app, which can include friends or relatives who run a shop or practice. Guessing from names, keywords or a language model would eventually let a personal chat through.
+- **Decision:** Chats with a certified business name are included automatically; profile-only chats are included only after the developer approves them; an exclude list always wins; group chats, status updates, broadcasts and WhatsApp Channels are never included.
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-025
+
+## D-020 — The WhatsApp section carries transactional updates only, with sensitive details redacted
+
+- **Date:** 2026-10-11
+- **Scope:** feature F-025
+- **Premise:** Business WhatsApp traffic is mostly advertising, which is noise in a spoken briefing. What matters is what the developer would regret missing: an order arriving, an appointment, a booking, a bill coming due. Confirmations of payments already made only repeat what the developer did, and they carry the most sensitive details.
+- **Decision:** Keep orders and deliveries, appointments and reservations, travel bookings, and bills, recharges, credit card and EMI payments that are due; drop promotions, one-time codes and confirmations of payments already made; redact card numbers, one-time codes and addresses everywhere.
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-025
+
+## D-021 — WhatsApp content is processed locally, and only redacted lines reach the cloud voice
+
+- **Date:** 2026-10-11
+- **Scope:** feature F-025
+- **Premise:** The digest is written by local Ollama, but the finished script is spoken by Cartesia, a cloud text-to-speech service (D-003). Anything from WhatsApp in the script therefore leaves the laptop. The developer wants the Cartesia voice to stay, but not their order numbers, amounts or addresses sent with it.
+- **Decision:** Sorting and summarising WhatsApp messages runs only on the local engine; the text sent to Cartesia contains only redacted "business name: status" lines; if the local engine is unreachable or the default engine is a cloud model, the WhatsApp section is skipped rather than sent to the cloud.
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-025; docs/ARCHITECTURE.md design decisions
+
+## D-022 — A new `whatsapp_desktop` connector owns the business filter
+
+- **Date:** 2026-10-11
+- **Scope:** feature F-025
+- **Premise:** The existing `whatsapp` connector reads exported text files and returns one document per whole chat, which is the wrong shape for a digest. Replacing it would break chat search for anyone using exports. If the business filter lived in the digest code, every future caller of the connector would have to remember to apply it, and a personal chat could leak through one that forgets.
+- **Decision:** Add a separate `whatsapp_desktop` connector, modelled on the iMessage connector, that returns one document per message from business chats only, with business status and verified name in its metadata; the export connector stays unchanged.
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-025; docs/ARCHITECTURE.md design decisions
+
+## D-023 — Profile-only businesses are approved with `jarvis whatsapp review`
+
+- **Date:** 2026-10-11
+- **Scope:** features F-025, F-026
+- **Premise:** Because profile-only chats need approval (D-019), the developer needs a way to approve or exclude them, and new businesses keep appearing. Naming new senders in the digest would reveal chats the developer has not approved.
+- **Decision:** A `jarvis whatsapp review` command lists suggested businesses with name, category and last-message date only, and saves decisions to `~/.openjarvis/whatsapp_businesses.toml`, which can also be edited by hand; the digest only says how many businesses await review. A review screen in the web UI is a separate later feature (F-026).
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-025, F-026
+
+## D-024 — WhatsApp gets its own digest section with latest status and a short look-ahead
+
+- **Date:** 2026-10-11
+- **Scope:** feature F-025
+- **Premise:** One order can produce several messages in a day ("shipped", then "out for delivery"), and reading each aloud is tedious. The digest looks back 24 hours, but a bill due date or an appointment confirmed a week ago matters on the day itself. The developer preferred a section of its own over a block inside Messages.
+- **Decision:** A top-level WHATSAPP section, spoken after Calendar, shows the latest status per order or booking from the last 24 hours plus due dates and appointments in the next 48 hours found in the last 14 days, at most about 8 items, soonest first.
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-025
+
+## D-025 — OpenJarvis opens WhatsApp before the digest and warns when its data is stale
+
+- **Date:** 2026-10-11
+- **Scope:** feature F-025
+- **Premise:** The WhatsApp Mac app only downloads new messages while it is running. If it is closed overnight, the 07:00 digest would silently miss everything since. macOS can open an app in the background without taking focus (`open -g`).
+- **Decision:** The scheduler opens WhatsApp in the background about 15 minutes before the digest; if the newest message is still more than 12 hours old, the digest says so and `jarvis doctor` flags it.
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-025
+
+## D-026 — The WhatsApp source fails closed when it cannot be sure
+
+- **Date:** 2026-10-11
+- **Scope:** feature F-025
+- **Premise:** The Mac app's database layout is undocumented and can change with any WhatsApp update. If the connector misread a changed layout, it could treat personal chats as business chats. Business updates arrive in one-to-one chats, so groups, broadcasts and WhatsApp Channels add risk without adding the updates the developer asked for.
+- **Decision:** When the database layout is not the one the connector recognises, it reports "unsupported version" and returns nothing rather than reading without the business filter; groups, broadcasts, status updates and Channels are always excluded.
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-025
+
+## D-027 — Promotions are dropped by Meta's template category before the local model runs
+
+- **Date:** 2026-10-11
+- **Scope:** feature F-025
+- **Premise:** The template-message spike (F-027) found that every template message a business sends carries Meta's own category label, `UTILITY` or `MARKETING`, inside the message data, on seven message types. Businesses must declare this category to Meta, so it is a far more reliable signal than asking a language model whether a message is an advert. Plain-text messages carry no category.
+- **Decision:** The `whatsapp_desktop` source drops any message whose template category is `MARKETING` before the local model sees it; the local model still sorts messages without a category.
+- **Supersedes:** none (refines how D-020's "drop promotions" is carried out)
+- **Recorded in:** feature_list.json F-025; docs/spikes/whatsapp/FINDINGS.md
+
+## D-028 — Profile-only chats that send utility templates are pre-approved but stay reviewable
+
+- **Date:** 2026-10-11
+- **Scope:** feature F-025
+- **Premise:** Under D-019, chats with only a business profile need the developer's approval, because a friend running a shop on the WhatsApp Business app also has a business profile. The spike found 292 `UTILITY` template messages from profile-only chats. Only businesses on Meta's WhatsApp Business Platform can send template messages at all, which friends on the ordinary WhatsApp Business app cannot, so these senders are almost certainly real businesses. Requiring manual approval for all of them would make the review list long for little safety gain.
+- **Decision:** A profile-only chat that has sent at least one `UTILITY` template is pre-approved, and is still listed in `jarvis whatsapp review` so the developer can exclude it; other profile-only chats still need explicit approval.
+- **Supersedes:** the profile-only part of D-019, for chats that have sent `UTILITY` templates
+- **Recorded in:** feature_list.json F-025; docs/spikes/whatsapp/FINDINGS.md

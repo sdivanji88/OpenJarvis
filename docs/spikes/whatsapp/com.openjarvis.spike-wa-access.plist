@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.openjarvis.spike-wa-access</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/sughoshdivanji/.openjarvis/.venv/bin/python</string>
+    <string>/tmp/wa_spike/launchd_probe.py</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardErrorPath</key>
+  <string>/tmp/wa_spike/launchd_probe.err</string>
+  <key>StandardOutPath</key>
+  <string>/tmp/wa_spike/launchd_probe.out</string>
+</dict>
+</plist>

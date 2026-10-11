@@ -130,3 +130,41 @@ None.
 **Issues**: `tests/server/test_deep_research_tools_wiring.py` is flaky once under xdist (worker-thread timing), unrelated to this branch.
 
 **Next session**: confirm the first real 07:00 run on 2026-10-12; design-consensus for "text me the digest".
+
+### Session 7 -- 2026-10-11T17:15:00Z (design-consensus: F-025 WhatsApp business updates in the digest)
+
+**What was done** (design only, no source changes):
+- Interviewed the user on adding WhatsApp as a digest source. Found that the existing export-based `whatsapp` connector never connects in the digest (`digest_collect` builds connectors with no arguments) and that the Baileys bridge stores nothing and risks the user's number.
+- Inspected the installed WhatsApp Mac app's databases read-only. Only schemas and aggregate counts were read, no message contents. `Biz/Biz.sqlite` marks business accounts: 82 of 454 one-to-one chats have a certified business name and 117 have a business profile only. Template-style messages (type 19) keep their text in a protobuf blob.
+- Agreed design D-018 to D-026:
+  - A new `whatsapp_desktop` connector reads the Mac database for business chats only. Certified names are included automatically, and profile-only chats need approval.
+  - Transactional scope, with redaction of sensitive details. Processing is local only, and Cartesia gets redacted lines.
+  - Its own WHATSAPP section after Calendar.
+  - The app is opened before the digest, with a staleness warning.
+  - `jarvis whatsapp review`.
+  - The source fails closed.
+- Recorded F-025 (design agreed, todo) and F-026 (web review UI, todo) in feature_list.json; updated docs/ARCHITECTURE.md, docs/PRODUCT.md and docs/development/roadmap.md.
+
+**Gates**: not run, because only docs and trackers changed. `feature_list.json` parses.
+
+**Next session**: dispatch the orchestrator for F-025, starting with the type-19 decoding spike and a check that the launchd scheduler service can read WhatsApp's Group Container.
+
+### Session 7b -- 2026-10-11T17:30:00Z (spikes F-027, F-028)
+
+**What was done**:
+- Created the spike tickets F-027 and F-028; F-025 now depends on both. Ran both read-only and with masked output; the scripts and findings are in `docs/spikes/whatsapp/`.
+- F-027: template messages decode without a schema.
+  - The body is at `24.1.6` in 66 of 68 messages.
+  - The header is at `24.1.2`, the footer at `24.1.7`, buttons at `24.1.8.*`, and the template ID at `24.6`.
+  - Meta's template category `UTILITY`/`MARKETING` is at `24.7`, on seven message types.
+  - The `LID.sqlite` pair table is empty.
+- F-028: a real launchd job using the scheduler's uv Python 3.13 read `ChatStorage`, `Biz` and `LID` with no prompt and no Full Disk Access. The temporary job was removed afterwards.
+
+**Gates**: validate-harness passes. Only docs, trackers and spike scripts changed; the spike scripts are outside lint and security scope.
+
+**Agreed afterwards**:
+- D-027: `MARKETING`-category templates are dropped before the local model runs.
+- D-028: profile-only senders of `UTILITY` templates are pre-approved and stay reviewable.
+Both are folded into F-025's summary and its criteria AC-002 and AC-004.
+
+**Next session**: dispatch the orchestrator for F-025.

@@ -2,11 +2,17 @@
 
 > Read this at the start of every session. Update it before ending every session.
 
-**Last updated:** 2026-10-11T11:42:00Z
+**Last updated:** 2026-10-11T17:15:00Z
 
 ---
 
 ## What was accomplished
+
+- **F-025 (WhatsApp business updates in the morning digest): design agreed, not built.** This was a design-only session; decisions D-018 to D-026 are in `docs/DECISION_LOG.md`.
+  - A new `whatsapp_desktop` connector will read the WhatsApp Mac app's local SQLite data read-only, for business chats only. Certified business names are included automatically, profile-only chats need approval through `jarvis whatsapp review`, and an exclude list overrides both.
+  - The digest will get its own WHATSAPP section after Calendar. Processing is local only, and Cartesia gets only redacted lines.
+  - F-026 (web UI review screen) is tracked as `todo`.
+  - The database was inspected read-only (schemas and counts only).
 
 - **F-021, F-022, F-024 are `verified`.** Every hard gate passed on the final tree, and the user confirmed hearing the scheduled 16:13 test digest.
 - **F-024 (scheduled digest runs and plays at 07:00).** Design D-008 to D-013.
@@ -39,6 +45,13 @@
 
 ## What remains
 
+0. **F-025:** both spikes are done and `verified`. Findings are in `docs/spikes/whatsapp/FINDINGS.md`.
+   - F-027: template text decodes; the body is at protobuf path `24.1.6`.
+   - F-028: the launchd service reads WhatsApp data without Full Disk Access.
+   Two design amendments were agreed:
+   - D-027: drop `MARKETING`-category templates before the local model runs.
+   - D-028: pre-approve profile-only senders of `UTILITY` templates, while keeping them reviewable.
+   F-025 is ready: dispatch `Agent(subagent_type="orchestrator", prompt="F-025")`. The digest config needs `whatsapp_desktop` as a source, and the scheduler allowlists may need updating (D-011).
 1. **Next feature the user wants:** text the digest to their phone. It needs design-consensus, and the messaging tool must be added to `scheduler.allowed_tools`.
 2. F-023 (the web UI keeps a pasted Notion token in memory only) is `todo`. The code review notes the server still uses `hasattr(_token)` rather than `accepts_pasted_token`, so the CLI and the web UI disagree.
 3. Code-review follow-ups (not done):
@@ -55,7 +68,7 @@
 
 ## Blockers / decisions made
 
-- D-001 to D-017 are in `docs/DECISION_LOG.md`. No open blockers.
+- D-001 to D-028 are in `docs/DECISION_LOG.md`. No open blockers. F-025's open questions are all resolved by spikes F-027 and F-028 and by D-027 and D-028.
 
 ## Files modified
 
@@ -70,4 +83,4 @@ None this session.
 
 ## Next session — start here
 
-Check that the 07:00 digest played on 2026-10-12, using `jarvis scheduler logs a1c7a7d1d2b44f76` and `~/.openjarvis/logs/scheduler.err.log`. Restart the service (`launchctl kickstart -k gui/$(id -u)/com.openjarvis.scheduler`) if it was started before this session's last edits. Then run design-consensus for "text me the digest".
+For F-025, dispatch the orchestrator (see "What remains" item 0). Also check that the 07:00 digest played on 2026-10-12, using `jarvis scheduler logs a1c7a7d1d2b44f76` and `~/.openjarvis/logs/scheduler.err.log`. Restart the service (`launchctl kickstart -k gui/$(id -u)/com.openjarvis.scheduler`) if it was started before this session's last edits. Then run design-consensus for "text me the digest".

@@ -91,9 +91,19 @@ Record significant decisions inline here or as separate files in `docs/decisions
 - **Rust core mirrored via PyO3** — performance and a future native runtime; trade-off is keeping Python and Rust in sync and a local build step.
 - {{TODO: further decisions}}
 
+### WhatsApp as a digest source (F-025, D-018 – D-026)
+
+- **Decision:** a new `whatsapp_desktop` connector reads the WhatsApp Mac app's local SQLite data read-only (`ChatStorage.sqlite` for messages, `Biz/Biz.sqlite` for business identity, `LID.sqlite` for account-ID mapping) and yields one document per message from business chats only. The business filter, approval list and exclude list live inside the connector, so no caller can see personal chats (D-018, D-019, D-022). Classification and redaction run only on the local engine; only redacted "business: status" lines reach Cartesia text-to-speech, and the section is skipped when the local engine is unavailable, the default engine is a cloud model, or the database layout is unrecognised (D-021, D-026).
+- **Context:** Indian businesses send transactional updates on WhatsApp; personal chats must be strictly excluded; the developer's digest is written by Ollama but spoken by a cloud voice.
+- **Alternatives considered:** Baileys linked device (reliable business marker, but it breaks WhatsApp's terms, risks the user's personal number, and is marked Blocked in the roadmap); hand exports via the existing `whatsapp` connector (never fresh daily, no business marker); WhatsApp Business Cloud API (cannot read a personal inbox).
+- **Trade-offs accepted:** macOS only, and the WhatsApp Mac app must be installed and running (the scheduler opens it before the digest, D-025); the database layout is undocumented and may change with app updates (fail closed); profile-only businesses need one-time approval (`jarvis whatsapp review`, D-023).
+
 ## Open architectural questions
 
 {{TODO: list unresolved questions.}}
+
+- **F-025 template messages — resolved by F-027:** the protobuf in `ZWAMEDIAITEM.ZMETADATA` decodes without a schema. The body is at path `24.1.6` (66 of 68 messages), and Meta's template category `UTILITY`/`MARKETING` is at `24.7`. See [spikes/whatsapp/FINDINGS.md](spikes/whatsapp/FINDINGS.md). `MARKETING` templates are dropped before the local model runs (D-027), and profile-only senders of `UTILITY` templates are pre-approved but reviewable (D-028).
+- **F-025 macOS permission — resolved by F-028:** a launchd job using the scheduler's interpreter reads the Group Container without Full Disk Access. F-025 still fails closed on permission errors.
 
 ## How this doc stays accurate
 

@@ -1165,6 +1165,228 @@
       },
       "blocker": null,
       "note": "Evidence 2026-10-11: task 560d3f7f53244ca2 last_run empty, next_run still 2026-10-05T01:30Z although `jarvis serve` (pid 35464) has run since 2026-10-04 19:26 IST; task_run_logs empty. User chose: speak aloud at 07:00, via a proper scheduler fix. | 2026-10-11 orchestrator: implemented; AC-001..AC-005 pass; AC-006 pending (manual, main session); AC-007 fail only on architecture-review (oversize pre-existing files touched + non-converging LLM audit) pending user decision. | 2026-10-11 final: all gates green on the final tree; verified."
+    },
+    {
+      "id": "F-025",
+      "title": "WhatsApp business updates in the morning digest",
+      "description": "Many businesses in India send order, delivery, appointment, travel and bill-due updates on WhatsApp. Add them to the morning digest as their own section, read locally from the WhatsApp Mac app's database, from business accounts only, with personal chats strictly excluded and sensitive details redacted.",
+      "priority": "required",
+      "dependencies": [
+        "F-021",
+        "F-024",
+        "F-027",
+        "F-028"
+      ],
+      "status": "todo",
+      "design": {
+        "status": "agreed",
+        "risk": "escalated",
+        "summary": "New `whatsapp_desktop` connector (iMessage pattern) reads the WhatsApp Mac app's local data read-only from ~/Library/Group Containers/group.net.whatsapp.WhatsApp.shared/: messages from ChatStorage.sqlite (Apple epoch), business identity from Biz/Biz.sqlite (ZWABIZVERIFIEDNAMEDATA = certified business name with ZVERIFICATIONLEVEL; ZWABIZPROFILEDATA = business profile), account-ID mapping from LID.sqlite (ZWAPHONENUMBERLIDPAIR). One-to-one chats only; certified-name chats included automatically, profile-only chats only after approval, exclude list always wins; groups, status, broadcasts and Channels excluded; personal chats never read for content. One Document per message (author = verified name; metadata business_tier, message_type). A local-engine-only classifier labels each message order/appointment/travel/bill-due/ignore, drops promotions, OTPs and confirmations of payments already made, and redacts card numbers, OTPs and addresses before anything else sees the text. Digest gets a top-level WHATSAPP section after CALENDAR: latest status per order/booking from the last 24h plus due dates and appointments in the next 48h found in the last 14 days, at most ~8 items soonest first, plus an unnamed 'N new businesses awaiting review' line. Only redacted 'business: status' lines reach Cartesia. Fails closed (section skipped) if Ollama is unreachable, the default engine is a cloud model, or the database layout is unrecognised. Scheduler runs `open -g -a WhatsApp` ~15 min before the digest; digest and `jarvis doctor` warn when the newest message is over 12h old. `jarvis whatsapp review` (name, category, last-message date only) writes ~/.openjarvis/whatsapp_businesses.toml (hand-editable). Web UI review is F-026. Export-based `whatsapp` connector unchanged. Schema facts observed read-only on the developer's machine 2026-10-11: 454 one-to-one chats, 82 with certified names, 117 profile-only. Amended after spikes F-027/F-028 (D-027, D-028): template messages decode (body at protobuf 24.1.6 of ZWAMEDIAITEM.ZMETADATA, category at 24.7); messages whose template category is MARKETING are dropped before the local model; profile-only chats that have sent a UTILITY template are pre-approved but listed in `jarvis whatsapp review` for exclusion; business matching uses Biz ZJID and ZPHONENUMBERJID (LID pair table may be empty), unmatched = personal; the launchd service needs no Full Disk Access, but permission errors fail closed and `jarvis doctor` names the interpreter path.",
+        "open_questions": [
+          "Resolved by F-027: type-19 template text is recoverable (body at protobuf path 24.1.6 in 66/68); decode, else 'update from <business>'.",
+          "Resolved by F-028: the launchd scheduler service reads the Group Container without Full Disk Access; still fail closed on permission errors.",
+          "Resolved by D-027: MARKETING-category templates are dropped before the local model.",
+          "Resolved by D-028: profile-only senders of UTILITY templates are pre-approved and reviewable."
+        ],
+        "decision_refs": [
+          "D-018",
+          "D-019",
+          "D-020",
+          "D-021",
+          "D-022",
+          "D-023",
+          "D-024",
+          "D-025",
+          "D-026",
+          "D-027",
+          "D-028"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "Personal chats, groups, WhatsApp Channels, status updates and broadcasts never appear in `whatsapp_desktop` connector output (fixture ChatStorage/Biz/LID databases).",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-002",
+          "statement": "Certified-name business chats are included automatically; profile-only chats that have sent a UTILITY template are pre-approved and listed in `jarvis whatsapp review`; other profile-only chats appear only after approval in whatsapp_businesses.toml; the exclude list overrides all of these; chats not matched to Biz.sqlite by ZJID or ZPHONENUMBERJID are treated as personal.",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-003",
+          "statement": "OTPs, card numbers and addresses are redacted in every digest output and in the text sent to text-to-speech.",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-004",
+          "statement": "Messages whose template category is MARKETING are dropped before the local model runs; other promotions and confirmations of payments already made are dropped by the local classifier; orders and deliveries, appointments and reservations, travel bookings, and bills, recharges, credit card and EMI payments due are kept; template bodies are decoded from ZMETADATA (else 'update from <business>').",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-005",
+          "statement": "The WHATSAPP section comes after CALENDAR, collapses each order or booking to its latest status, includes due dates and appointments in the next 48h found in the last 14 days, caps at about 8 items soonest first, and shows an unnamed 'N new businesses awaiting review' line.",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-006",
+          "statement": "With a cloud default engine, an unreachable Ollama, or an unrecognised database layout, the WHATSAPP section is skipped and no WhatsApp-derived text leaves the device.",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-007",
+          "statement": "The scheduler opens WhatsApp in the background about 15 minutes before the scheduled digest; when the newest message is more than 12h old the digest and `jarvis doctor` warn about it.",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-008",
+          "statement": "`jarvis whatsapp review` lists suggested businesses without message text and persists approve/exclude decisions to ~/.openjarvis/whatsapp_businesses.toml.",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Design agreed 2026-10-11 in design-consensus (design-only session). Next: dispatch orchestrator for F-025, starting with the type-19 decoding spike. | 2026-10-11 spikes F-027/F-028 verified; D-027/D-028 agreed. Ready for orchestrator."
+    },
+    {
+      "id": "F-026",
+      "title": "Web UI review screen for WhatsApp businesses",
+      "description": "A review screen in the web UI / desktop app for approving or excluding WhatsApp business chats suggested by F-025, backed by the same ~/.openjarvis/whatsapp_businesses.toml as `jarvis whatsapp review`.",
+      "priority": "optional",
+      "dependencies": [
+        "F-025"
+      ],
+      "status": "todo",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": [
+          "D-023"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria to be agreed in design-consensus",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": ""
+    },
+    {
+      "id": "F-027",
+      "title": "Spike: extract text from WhatsApp template messages (type 19)",
+      "description": "About a third of recent business messages in the WhatsApp Mac app's ChatStorage.sqlite have ZMESSAGETYPE 19, no ZTEXT, and their content in an undocumented protobuf blob in ZWAMEDIAITEM.ZMETADATA. Determine whether a schema-less protobuf walk recovers the message text reliably enough for F-025, and record the field layout.",
+      "priority": "required",
+      "dependencies": [],
+      "status": "verified",
+      "design": {
+        "status": "agreed",
+        "risk": "light",
+        "summary": "Time-boxed spike, requested by the developer 2026-10-11. Read-only access to the developer's WhatsApp Mac databases, certified-business chats only; output is field paths, lengths and redacted previews, never raw message text. Outcome feeds F-025 slice 1.",
+        "open_questions": [],
+        "decision_refs": [
+          "D-018",
+          "D-026"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "A documented answer: which protobuf field(s) of type-19 ZMETADATA hold the human-readable body (and title/footer/buttons if any), the share of type-19 business messages from which non-empty text is recovered, and a recommendation for F-025 (decode, or fall back to 'update from <business>').",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "python3 docs/spikes/whatsapp/decode_type19.py 30",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T17:20:00Z",
+              "note": "68 type-19 messages from certified-business chats (last 30d); body at 24.1.6 in 66/68 (97%); header 24.1.2, footer 24.1.7, buttons 24.1.8.*, template id 24.6, category 24.7 on 68/68. Recommendation: decode (schema-less walk, forcing 24/24.1/24.1.8* as submessages); fall back to 'update from <business>' for the rest. Details: docs/spikes/whatsapp/FINDINGS.md."
+            },
+            {
+              "type": "command",
+              "command": "cd docs/spikes/whatsapp && python3 category_census.py",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T17:20:00Z",
+              "note": "Template category 24.7 (UTILITY/MARKETING) present on message types 13, 19, 20, 24, 41, 42, 43. Certified: 189 UTILITY / 114 MARKETING; profile-only: 292 UTILITY / 120 MARKETING; not in business tables: 1 MARKETING. LID.sqlite ZWAPHONENUMBERLIDPAIR is empty on this machine."
+            }
+          ]
+        }
+      ],
+      "verification": {
+        "commands": [
+          "python3 docs/spikes/whatsapp/decode_type19.py 30",
+          "cd docs/spikes/whatsapp && python3 category_census.py"
+        ],
+        "manual_checks": [],
+        "last_verified_at": "2026-10-11T17:20:00Z"
+      },
+      "blocker": null,
+      "note": "Spike answered. Proposed F-025 amendments (drop MARKETING by category; treat UTILITY-template senders as businesses) need the developer's agreement before they change the design."
+    },
+    {
+      "id": "F-028",
+      "title": "Spike: can the launchd scheduler service read WhatsApp's Group Container?",
+      "description": "The digest runs from the launchd scheduler service (D-009, `~/.openjarvis/.venv/bin/jarvis` interpreted by the venv Python). macOS may block that process from reading ~/Library/Group Containers/group.net.whatsapp.WhatsApp.shared/ (Full Disk Access or 'access data from other apps' consent). Determine whether it can, and what the user must grant if not.",
+      "priority": "required",
+      "dependencies": [],
+      "status": "verified",
+      "design": {
+        "status": "agreed",
+        "risk": "light",
+        "summary": "Time-boxed spike, requested by the developer 2026-10-11. Run a temporary, self-removing launchd LaunchAgent using the same venv Python as the scheduler service; it opens ChatStorage.sqlite and Biz.sqlite read-only and logs only table counts. Remove the agent afterwards.",
+        "open_questions": [],
+        "decision_refs": [
+          "D-009",
+          "D-018"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "A documented answer, from a real launchd-launched process using the scheduler's interpreter: can it open ChatStorage.sqlite and Biz/Biz.sqlite read-only, and if not, which macOS permission fixes it and how F-025 should detect and report the missing permission.",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "launchctl bootstrap gui/$(id -u) /tmp/wa_spike/com.openjarvis.spike-wa-access.plist && cat /tmp/wa_spike/launchd_result.txt && launchctl bootout gui/$(id -u)/com.openjarvis.spike-wa-access",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T17:25:00Z",
+              "note": "launchd job (ppid=1) with /Users/sughoshdivanji/.openjarvis/.venv/bin/python -> uv cpython-3.13.1: listdir OK (1.58s first access), ChatStorage.ZWACHATSESSION 558, Biz.ZWABIZVERIFIEDNAMEDATA 199, LID.ZWAPHONENUMBERLIDPAIR 0, all read-only, no macOS prompt; TCC.db open FAILED (no Full Disk Access) -> none needed. Job removed afterwards. F-025 must still fail closed on PermissionError / 'unable to open database file' and have `jarvis doctor` name the interpreter's realpath for Full Disk Access. Details: docs/spikes/whatsapp/FINDINGS.md."
+            }
+          ]
+        }
+      ],
+      "verification": {
+        "commands": [
+          "launchctl bootstrap gui/$(id -u) docs/spikes/whatsapp/com.openjarvis.spike-wa-access.plist (probe copied to /tmp/wa_spike/launchd_probe.py), read /tmp/wa_spike/launchd_result.txt, then launchctl bootout gui/$(id -u)/com.openjarvis.spike-wa-access"
+        ],
+        "manual_checks": [],
+        "last_verified_at": "2026-10-11T17:25:00Z"
+      },
+      "blocker": null,
+      "note": "Spike answered: the scheduler service can read WhatsApp's Group Container on this macOS without Full Disk Access."
     }
   ]
 }

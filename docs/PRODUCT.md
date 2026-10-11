@@ -14,6 +14,7 @@ Privacy-conscious individuals and developers run a personal assistant on their o
 
 - When I start my day, I want a spoken briefing of messages, calendar, health, and world news, so that I'm oriented without opening five apps.
 - When my briefing covers world news, I want it narrowed to the topics I follow (for example, tech-industry keywords on my RSS feeds), read in a voice and at a local time I choose, so that it is relevant without manual curation (F-021).
+- When businesses message me on WhatsApp (common in India), I want my briefing to tell me about orders and deliveries, appointments and reservations, travel bookings, and bills or EMIs coming due, from business accounts only, with promotions dropped, personal chats never read, and card numbers, one-time codes and addresses redacted, so that I don't miss what matters in a flood of business messages (F-025). Open questions: whether template-style business messages can be decoded, and whether the background scheduler service gets macOS permission to read WhatsApp's data.
 - When I research a topic, I want an agent that searches and synthesizes sources, so that I get a cited summary without manual browsing.
 - When I chat with an assistant, I want it to run on my own hardware, so that my personal data never leaves my device unless I choose.
 - When I evaluate models, I want energy, latency, and cost measured alongside accuracy, so that I can pick the right local/cloud trade-off.
