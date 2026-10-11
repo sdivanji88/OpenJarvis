@@ -20,6 +20,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from openjarvis.core.events import EventBus, EventType
 from openjarvis.core.types import ToolCall, ToolResult
+from openjarvis.security.tool_allowlist import blocked_reason
 
 logger = logging.getLogger(__name__)
 
@@ -250,6 +251,23 @@ class ToolExecutor:
 
     def execute(self, tool_call: ToolCall) -> ToolResult:
         """Parse arguments, dispatch to tool, measure latency, emit events."""
+        reason = blocked_reason(tool_call.name)
+        if reason is not None:
+            logger.warning("Blocked tool %s: %s", tool_call.name, reason)
+            if self._bus:
+                self._bus.publish(
+                    EventType.CAPABILITY_DENIED,
+                    {
+                        "agent_id": self._agent_id,
+                        "tool": tool_call.name,
+                        "reason": reason,
+                    },
+                )
+            return ToolResult(
+                tool_name=tool_call.name,
+                content=f"Tool '{tool_call.name}' blocked: {reason}",
+                success=False,
+            )
         tool = self._tools.get(tool_call.name)
         if tool is None:
             return ToolResult(

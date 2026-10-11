@@ -86,6 +86,15 @@ class FakeSchedulerStore:
     def update_task(self, task_dict: Dict) -> None:
         self._tasks[task_dict["id"]] = task_dict
 
+    def claim_task(self, task_id, *, expected_next_run, next_run, last_run, status):
+        task = self._tasks.get(task_id)
+        if not task or task.get("status") != "active":
+            return False
+        if task.get("next_run") != expected_next_run:
+            return False
+        task.update(next_run=next_run, last_run=last_run, status=status)
+        return True
+
     def list_tasks(self, *, status=None) -> List[Dict]:
         tasks = list(self._tasks.values())
         if status:

@@ -2,8 +2,8 @@
 
 The task scheduler lets you run agent queries automatically on a schedule -- once at a future time, on a recurring interval, or via a cron expression. Scheduled tasks are persisted in SQLite so they survive process restarts, and execution is handled by a background daemon thread that polls for due tasks every 60 seconds.
 
-!!! note "Optional component"
-    The scheduler is a standalone module (`openjarvis.scheduler`). It is not wired into the default `Jarvis` / `JarvisSystem` startup. You enable it explicitly via `SystemBuilder` or by starting the CLI daemon with `jarvis scheduler start`.
+!!! note "Who runs scheduled tasks"
+    `jarvis scheduler start` is the only process that runs scheduled tasks. `jarvis serve` does **not** run them. Install the scheduler as a macOS login service with `jarvis scheduler start --install` so tasks keep running after you close the terminal or restart.
 
 ---
 
@@ -27,31 +27,35 @@ The `jarvis scheduler` subcommand group manages tasks and the daemon from the te
 ### Start the daemon
 
 ```bash
-jarvis scheduler start
+jarvis scheduler start             # foreground, until Ctrl+C (--verbose for DEBUG logs)
+jarvis scheduler start --install   # macOS: install and load a launchd login service
+jarvis scheduler start --uninstall # remove the login service
+jarvis scheduler status            # installed / loaded / running
 ```
 
-Starts the background polling daemon. The daemon runs in the foreground until interrupted (++ctrl+c++). In production, run it under systemd or launchd (see [Deployment](../deployment/systemd.md)).
+The daemon builds a fresh Jarvis system for every run, so Ollama being down at login or a config edit needs no restart, except for `scheduler.allowed_agents` / `scheduler.allowed_tools`, which are read at startup. Only allowlisted agents and tools run (see [Unattended runs](#unattended-runs)). A lock file (`~/.openjarvis/scheduler.lock`) keeps a second scheduler from running tasks: it prints `A scheduler is already running …; nothing to do.` and exits 0, so a hand-started one and the service never both run tasks.
+
+`--install` writes `~/Library/LaunchAgents/com.openjarvis.scheduler.plist` (starts at login and restarts after a crash, but not after a clean stop or when another scheduler is already running) and logs to `~/.openjarvis/logs/scheduler.out.log` and `scheduler.err.log`. The plist never contains secrets: the service loads keys from the owner-only `~/.openjarvis/credentials.toml`, and `--install` offers to copy `CARTESIA_API_KEY` there from your shell. It also offers to copy your digest persona into `~/.openjarvis/prompts/personas/`, because launchd does not run from your checkout. On Linux, run `jarvis scheduler start` under systemd or another supervisor (see [Deployment](../deployment/systemd.md)).
+
+`jarvis scheduler run-task AGENT` runs a task immediately for testing and records it in `jarvis scheduler logs` like a scheduled run, without moving its schedule. It bypasses both allowlists (`allowed_agents` and `allowed_tools`) and the misfire window, so keep it a manual operator command; it exits 1 if the run fails.
 
 ### Create a task
 
 ```bash
 # Run once at a specific time
-jarvis scheduler create \
-  --prompt "Generate the weekly summary report" \
+jarvis scheduler create "Generate the weekly summary report" \
   --type once \
   --value "2026-03-01T09:00:00Z"
 
 # Run every hour
-jarvis scheduler create \
-  --prompt "Check for new emails and summarize" \
+jarvis scheduler create "Check for new emails and summarize" \
   --type interval \
   --value "3600" \
   --agent orchestrator \
   --tools retrieval,think
 
 # Run on a cron schedule
-jarvis scheduler create \
-  --prompt "Summarize overnight logs" \
+jarvis scheduler create "Summarize overnight logs" \
   --type cron \
   --value "0 8 * * 1-5"
 ```
@@ -104,11 +108,45 @@ jarvis scheduler logs a3f9b12c4d8e
 Example output:
 
 ```
-Run 1: started=2026-02-25T08:00:01Z finished=2026-02-25T08:00:04Z success=True
-  Result: Overnight logs contain 3 warnings and no errors.
-Run 2: started=2026-02-24T08:00:00Z finished=2026-02-24T08:00:05Z success=True
-  Result: Logs are clean.
+ ID  Started               Finished              Outcome  Result                      Error
+  3  2026-02-26T08:00:00Z  2026-02-26T08:00:00Z  missed                              240 min late (grace 180)
+  2  2026-02-25T08:00:01Z  2026-02-25T08:00:04Z  success  Overnight logs contain 3…
+  1  2026-02-24T08:00:00Z  2026-02-24T08:00:05Z  success  Logs are clean.
 ```
+
+---
+
+## Unattended runs
+
+Scheduled tasks run with nobody watching, so the daemon is deny-by-default. List the agents it may run and the tools those agents may use:
+
+```toml title="~/.openjarvis/config.toml"
+[scheduler]
+allowed_agents = ["morning_digest"]
+allowed_tools = ["digest_collect", "text_to_speech"]
+```
+
+- A task whose agent is not in `allowed_agents` is skipped and logged.
+- Every tool call in the daemon process goes through OpenJarvis's tool executor, which refuses tools outside `allowed_tools`, including tools an agent adds for itself. Agents cannot create scheduled tasks from inside the daemon.
+- `allowed_tools` matches the tool name the agent exposes to the model, so a tool an agent offers under a different name is checked under that name.
+- Some agents call tools outside the executor, so `allowed_tools` does not cover them: `claude_code` and `opencode` (external CLIs with their own tools) and the hybrid agents in `agents/hybrid` (for example, their Tavily search context calls the web search tool directly). Only `allowed_agents` guards them, so list them only if you accept that.
+- A one-shot (`once`) task whose agent is not allowed is skipped and paused, not completed. Add the agent to `allowed_agents`, restart the service, then `jarvis scheduler resume <task-id>` to run it.
+- Both lists are read at startup. After changing them, restart the service: `launchctl kickstart -k gui/$UID/com.openjarvis.scheduler`.
+
+Each slot runs at most once: the task's next run time is advanced *before* it executes, so a crash or failure is not retried in the same slot. Every run is recorded in `jarvis scheduler logs` (with the reply text) and as one audit line in the service log, with one of these outcomes:
+
+| Outcome   | Meaning                                                      |
+|-----------|--------------------------------------------------------------|
+| `success` | The agent ran and replied                                    |
+| `failed`  | The agent raised an error (recorded in the run log)          |
+| `skipped` | The agent is not in `scheduler.allowed_agents`               |
+| `missed`  | The run was later than the task's `misfire_grace_minutes`    |
+
+`jarvis scheduler logs` shows the outcome in its Outcome column; the Error column only explains it in words. Runs recorded before the outcome was stored show `success` or `failed`, derived from the old success flag.
+
+**Interval spacing.** Interval tasks are spaced start-to-start: the next run time is computed when a run is claimed, not when it finishes. A run that takes longer than its interval is due again at the next poll after it ends. Each slot still runs at most once.
+
+**Late runs.** Nothing runs while the machine sleeps. A task may set `metadata.misfire_grace_minutes`; a run later than that is skipped as `missed` and the task moves to its next slot. Tasks without the setting catch up as soon as the daemon sees them. `jarvis digest --schedule` sets 180 minutes for the morning digest.
 
 ---
 
@@ -222,6 +260,8 @@ enabled = false
 db_path = "~/.openjarvis/scheduler.db"
 poll_interval = 60
 default_agent = "simple"
+allowed_agents = ["morning_digest"]
+allowed_tools = ["digest_collect", "text_to_speech"]
 ```
 
 | Key              | Type   | Default                          | Description                                |
@@ -230,6 +270,8 @@ default_agent = "simple"
 | `db_path`        | `str`  | `~/.openjarvis/scheduler.db`     | SQLite database path                       |
 | `poll_interval`  | `int`  | `60`                             | Seconds between polling cycles             |
 | `default_agent`  | `str`  | `"simple"`                       | Default agent for tasks that omit `agent`  |
+| `allowed_agents` | `list` | `[]` (nothing runs)              | Agents `jarvis scheduler start` may run    |
+| `allowed_tools`  | `list` | `[]` (no tools)                  | Tools those agents may call                |
 
 ---
 

@@ -1,0 +1,45 @@
+# Reviewed gitleaks findings (2026-10-04). Every entry is pinned to one commit,
+# file, rule, and line, so a new leak anywhere still fails scripts/security.sh.
+# - tests/, docs/, src/openjarvis/evals/datasets/: deliberate fake credentials
+#   used by secret-scanner, guardrail, and redaction tests and eval fixtures.
+# - frontend/src/lib/api.ts, desktop/src/components/SavingsDashboard.tsx,
+#   docs/javascripts/leaderboard.js: Supabase JWTs with role "anon", which are
+#   public browser keys by design; removed from the tree in later commits.
+08b0ab1353bf76c23d301047eccf01d578ca47a2:tests/connectors/test_connectors_router_oauth.py:generic-api-key:791
+17de84b9e6eae9271d1fd90031aff196f82f0af5:tests/server/test_webhook_routes.py:generic-api-key:129
+17de84b9e6eae9271d1fd90031aff196f82f0af5:tests/server/test_webhook_routes.py:generic-api-key:144
+1dca2617272ec00fac9349847797b79b8cbd9f59:tests/security/test_guardrails.py:generic-api-key:405
+37b45ed2609860308de1e72ae40df00bd7aa5c6b:desktop/src/components/SavingsDashboard.tsx:jwt:281
+37b45ed2609860308de1e72ae40df00bd7aa5c6b:frontend/src/lib/api.ts:jwt:8
+44c52edfcdc419f5b59087f809a553b4bdf41887:docs/superpowers/plans/2026-03-28-security-hardening.md:generic-api-key:1475
+44c52edfcdc419f5b59087f809a553b4bdf41887:docs/superpowers/plans/2026-03-28-security-hardening.md:generic-api-key:421
+44c52edfcdc419f5b59087f809a553b4bdf41887:docs/superpowers/plans/2026-03-28-security-hardening.md:generic-api-key:438
+44c52edfcdc419f5b59087f809a553b4bdf41887:docs/superpowers/plans/2026-03-28-security-hardening.md:generic-api-key:446
+5d04454b1a52333798d3b59672e175e797bc7721:docs/javascripts/leaderboard.js:jwt:6
+687ad30f9ee400757f90d3c39b360a631b8c638d:tests/security/test_log_sanitization.py:generic-api-key:69
+7081be7bd349d1b3b9085ce50f2bf6891fc13de6:tests/analytics/test_redaction.py:generic-api-key:137
+7081be7bd349d1b3b9085ce50f2bf6891fc13de6:tests/analytics/test_redaction.py:jwt:68
+7c1f983891557e25238abde975db8612dbfb4488:tests/security/test_boundary_guard.py:generic-api-key:17
+7c1f983891557e25238abde975db8612dbfb4488:tests/security/test_boundary_guard.py:generic-api-key:34
+7c1f983891557e25238abde975db8612dbfb4488:tests/security/test_boundary_guard.py:generic-api-key:42
+8798e2ee4f5c548c5de1236a3e2891fe2520e992:desktop/src/components/SavingsDashboard.tsx:jwt:281
+8798e2ee4f5c548c5de1236a3e2891fe2520e992:docs/javascripts/leaderboard.js:jwt:6
+8798e2ee4f5c548c5de1236a3e2891fe2520e992:docs/user-guide/security.md:generic-api-key:201
+8798e2ee4f5c548c5de1236a3e2891fe2520e992:frontend/src/lib/api.ts:jwt:8
+8798e2ee4f5c548c5de1236a3e2891fe2520e992:src/openjarvis/evals/datasets/research_mining.py:generic-api-key:211
+8798e2ee4f5c548c5de1236a3e2891fe2520e992:src/openjarvis/evals/datasets/security_scanner.py:generic-api-key:64
+8798e2ee4f5c548c5de1236a3e2891fe2520e992:tests/security/test_guardrails.py:generic-api-key:232
+8798e2ee4f5c548c5de1236a3e2891fe2520e992:tests/security/test_guardrails.py:generic-api-key:249
+8798e2ee4f5c548c5de1236a3e2891fe2520e992:tests/security/test_guardrails.py:generic-api-key:267
+8798e2ee4f5c548c5de1236a3e2891fe2520e992:tests/security/test_scanner.py:stripe-access-token:80
+8798e2ee4f5c548c5de1236a3e2891fe2520e992:tests/security/test_taint.py:generic-api-key:111
+8798e2ee4f5c548c5de1236a3e2891fe2520e992:tests/security/test_taint.py:generic-api-key:140
+a433740809ac712efce1b10d0743c48472c738cb:docs/user-guide/security.md:generic-api-key:201
+a433740809ac712efce1b10d0743c48472c738cb:tests/security/test_guardrails.py:generic-api-key:213
+a433740809ac712efce1b10d0743c48472c738cb:tests/security/test_guardrails.py:generic-api-key:230
+a433740809ac712efce1b10d0743c48472c738cb:tests/security/test_guardrails.py:generic-api-key:248
+a4c4081ff415960bfc6391e01cdc295449f3d1ab:tests/security/test_taint.py:generic-api-key:111
+a4c4081ff415960bfc6391e01cdc295449f3d1ab:tests/security/test_taint.py:generic-api-key:140
+d012e6a482c16a3e8647ac9a3025e09dddbfdfa2:tests/security/test_scanner.py:stripe-access-token:80
+d89bbcce52de593cf8a404f1259f9e0e780df117:src/openjarvis/evals/datasets/research_mining.py:generic-api-key:211
+f715e0342aba5db401a04847e0276a277957514b:src/openjarvis/evals/datasets/security_scanner.py:generic-api-key:64

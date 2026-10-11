@@ -15,13 +15,16 @@ from openjarvis.core.registry import TTSRegistry
 from openjarvis.speech.tts import TTSBackend, TTSResult
 
 _CARTESIA_API_BASE = "https://api.cartesia.ai"
+# Cartesia sunsets old model ids (bare "sonic" now returns 400), so keep this
+# on a current generation.
+_DEFAULT_MODEL = "sonic-3"
 
 
 def _cartesia_synthesize(
     api_key: str,
     text: str,
     voice_id: str,
-    model: str = "sonic",
+    model: str = _DEFAULT_MODEL,
     output_format: str = "mp3",
     speed: float = 1.0,
     language: str = "en",
@@ -58,7 +61,11 @@ class CartesiaTTSBackend(TTSBackend):
     backend_id = "cartesia"
 
     def __init__(
-        self, *, api_key: str = "", model: str = "sonic", language: str = "en"
+        self,
+        *,
+        api_key: str = "",
+        model: str = _DEFAULT_MODEL,
+        language: str = "en",
     ) -> None:
         self._api_key = api_key or os.environ.get("CARTESIA_API_KEY", "")
         self._model = model

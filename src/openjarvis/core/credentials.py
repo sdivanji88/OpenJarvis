@@ -63,6 +63,7 @@ TOOL_CREDENTIALS: dict[str, list[str]] = {
     "xmpp": ["XMPP_JID", "XMPP_PASSWORD"],
     "feishu": ["FEISHU_APP_ID", "FEISHU_APP_SECRET"],
     "nostr": ["NOSTR_PRIVATE_KEY"],
+    "text_to_speech": ["CARTESIA_API_KEY"],
 }
 
 
@@ -72,9 +73,11 @@ TOOL_CREDENTIALS: dict[str, list[str]] = {
 # leaves no way to describe a tool that also works without one. ``web_search``
 # is the first such tool: the You.com keyless tier serves it with no key at all,
 # and every listed key only raises limits, changes the engine, or improves
-# result quality.
+# result quality. ``text_to_speech`` also runs keyless on local Kokoro (OpenAI
+# TTS needs ``OPENAI_API_KEY``); the Cartesia key only selects that backend.
 OPTIONAL_TOOL_CREDENTIALS: dict[str, frozenset[str]] = {
     "web_search": frozenset({"TAVILY_API_KEY", "YOUDOTCOM_API_KEY", "SERPLY_API_KEY"}),
+    "text_to_speech": frozenset({"CARTESIA_API_KEY"}),
 }
 
 

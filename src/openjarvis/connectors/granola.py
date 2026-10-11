@@ -225,6 +225,11 @@ class GranolaConnector(BaseConnector):
     connector_id = "granola"
     display_name = "Granola"
     auth_type = "oauth"  # API key, same credential-storage pattern as OAuth
+    accepts_pasted_token = True
+    paste_token_hint = (
+        "Open the Granola desktop app, go to Settings -> API, and create an "
+        "API key (Business or Enterprise plan required)."
+    )
 
     def __init__(
         self,
