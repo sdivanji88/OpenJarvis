@@ -254,6 +254,12 @@ class NotionConnector(BaseConnector):
     connector_id = "notion"
     display_name = "Notion"
     auth_type = "oauth"  # token-based, same pattern as OAuth connectors
+    accepts_pasted_token = True
+    paste_token_hint = (
+        "Create an internal integration at https://www.notion.so/my-integrations, "
+        "copy its secret, then share each page or database with it "
+        "(page menu -> Connections)."
+    )
 
     def __init__(
         self,

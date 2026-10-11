@@ -61,6 +61,19 @@ def test_cartesia_synthesize():
     assert result.voice_id == "test-voice"
 
 
+def test_cartesia_default_model_is_not_sunsetted():
+    from unittest.mock import MagicMock
+
+    from openjarvis.speech.cartesia_tts import CartesiaTTSBackend
+
+    with patch("openjarvis.speech.cartesia_tts.httpx.post") as post:
+        post.return_value = MagicMock(content=b"mp3")
+        CartesiaTTSBackend(api_key="fake-key").synthesize("Hi", voice_id="v")
+
+    # Cartesia rejects the bare "sonic" id with 400 "Model sunsetted".
+    assert post.call_args.kwargs["json"]["model_id"] == "sonic-3"
+
+
 # ---------------------------------------------------------------------------
 # Kokoro backend tests
 # ---------------------------------------------------------------------------

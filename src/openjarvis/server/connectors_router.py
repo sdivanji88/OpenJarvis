@@ -612,7 +612,7 @@ def create_connectors_router():
                     raise HTTPException(
                         status_code=400, detail="At least one RSS feed URL is required"
                     )
-                instance.configure(feeds)
+                instance.configure(feeds, keywords=(req.config or {}).get("keywords"))
 
             else:
                 # Generic: try to store token or credentials if the instance

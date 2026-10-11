@@ -128,6 +128,26 @@ jarvis digest --schedule off   # Disable schedule
 jarvis digest --schedule       # Show current schedule
 ```
 
+### Scheduled, spoken digest
+
+`jarvis digest --schedule` creates a task for the scheduler daemon; `jarvis serve` does not run it. To have it generated and spoken aloud on your Mac:
+
+```toml title="~/.openjarvis/config.toml"
+[digest]
+autoplay = true                 # default false: speak scheduled digests on this machine
+
+[scheduler]
+allowed_agents = ["morning_digest"]
+allowed_tools = ["digest_collect", "text_to_speech"]
+```
+
+```bash
+jarvis digest --schedule "0 7 * * *"
+jarvis scheduler start --install   # offers to copy CARTESIA_API_KEY and your persona
+```
+
+When a scheduled run succeeds and produced a new audio file, the scheduler plays it. Web/API requests and `jarvis digest --fresh` are unaffected by `autoplay`. If the Mac is asleep at the scheduled time, the digest still plays if it wakes within 180 minutes; later than that, the run is logged as `missed` and waits for the next day. Digest tasks created before this window existed have no window; re-run `jarvis digest --schedule "<cron>"` to recreate yours. See [Task Scheduler](scheduler.md#unattended-runs).
+
 ## Saying "Good morning"
 
 When chatting with Jarvis (via CLI, desktop, or browser), saying "Good morning" or "morning digest" automatically triggers the digest — no need to use the `digest` command explicitly.
@@ -169,6 +189,8 @@ The `sections` list controls what the digest covers, in order of priority:
 The `persona` field loads a prompt file from `configs/openjarvis/prompts/personas/{name}.md`. The default `jarvis` persona delivers briefings with dry British wit, prioritizes urgent items, and interprets health data as trends rather than raw numbers.
 
 To create a custom persona, add a new `.md` file in the personas directory.
+
+The checkout path is relative to the current directory. The scheduler service runs from `/`, so it reads `~/.openjarvis/prompts/personas/{name}.md` instead; `jarvis scheduler start --install`, run from the repo, offers to copy it there.
 
 ### News Feeds
 

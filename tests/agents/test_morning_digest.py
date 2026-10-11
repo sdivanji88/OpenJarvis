@@ -75,9 +75,67 @@ def test_morning_digest_run(tmp_path):
         assert forbidden not in prompt
 
 
+def test_morning_digest_logs_tts_failure(tmp_path, caplog):
+    from openjarvis.agents.morning_digest import MorningDigestAgent
+
+    mock_engine = MagicMock()
+    mock_engine.generate.return_value = {
+        "content": "Good morning sir.",
+        "finish_reason": "stop",
+        "usage": {},
+    }
+    collect = ToolResult(
+        tool_name="digest_collect", content="=== WORLD ===\n", success=True
+    )
+    tts_failure = ToolResult(
+        tool_name="text_to_speech",
+        content="TTS error: 400 Model sunsetted",
+        success=False,
+    )
+    agent = MorningDigestAgent(
+        mock_engine,
+        "test-model",
+        tools=[],
+        sections=["world"],
+        section_sources={"world": ["hackernews"]},
+        digest_store_path=str(tmp_path / "digest.db"),
+    )
+
+    with patch.object(agent._executor, "execute", side_effect=[collect, tts_failure]):
+        with caplog.at_level("WARNING", logger="openjarvis.agents.morning_digest"):
+            result = agent.run("Generate morning digest")
+
+    assert result.metadata["audio_path"] == ""
+    assert "Model sunsetted" in caplog.text
+
+
 def test_load_persona():
     from openjarvis.agents.morning_digest import _load_persona
 
     # Nonexistent persona returns empty string
     result = _load_persona("nonexistent_persona_xyz")
     assert result == ""
+
+
+def test_persona_lookup_prefers_checkout_then_user_dir(tmp_path, monkeypatch):
+    from openjarvis.agents.morning_digest import (
+        _load_persona,
+        checkout_persona_dir,
+        user_persona_dir,
+    )
+
+    home = tmp_path / "home"
+    monkeypatch.setenv("OPENJARVIS_HOME", str(home))
+    monkeypatch.chdir(tmp_path)
+    user_dir = user_persona_dir()
+    user_dir.mkdir(parents=True)
+    (user_dir / "p.md").write_text("from home")
+
+    assert user_dir == home.resolve() / "prompts" / "personas"
+    assert _load_persona("p") == "from home"
+
+    checkout = checkout_persona_dir()
+    checkout.mkdir(parents=True)
+    (checkout / "p.md").write_text("from checkout")
+
+    assert _load_persona("p") == "from checkout"

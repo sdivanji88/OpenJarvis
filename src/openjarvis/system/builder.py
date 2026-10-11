@@ -584,17 +584,9 @@ class SystemBuilder:
         if not scheduler_enabled:
             return None, None
         try:
-            from openjarvis.scheduler.store import SchedulerStore
+            from openjarvis.scheduler.store import open_default_store
 
-            db_path = config.scheduler.db_path or str(
-                config.hardware.platform  # unused, just for fallback
-            )
-            if not config.scheduler.db_path:
-                from openjarvis.core.config import DEFAULT_CONFIG_DIR
-
-                db_path = str(DEFAULT_CONFIG_DIR / "scheduler.db")
-
-            store = SchedulerStore(db_path=db_path)
+            store = open_default_store(config)
 
             from openjarvis.scheduler.scheduler import TaskScheduler
 

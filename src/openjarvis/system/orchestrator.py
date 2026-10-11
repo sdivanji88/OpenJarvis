@@ -6,6 +6,7 @@ import logging
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from openjarvis.core.types import Message, Role
+from openjarvis.security.tool_allowlist import filter_permitted
 from openjarvis.tools._stubs import BaseTool
 
 if TYPE_CHECKING:
@@ -111,6 +112,29 @@ class QueryOrchestrator:
 
         return None
 
+    @staticmethod
+    def _restrict_tools(agent_name: str, agent_kwargs: Dict[str, Any]) -> None:
+        """Don't offer the model tools the process allowlist would block.
+
+        ``ToolExecutor`` enforces the allowlist on every call; this only keeps
+        the model from planning around tools it cannot use. Applied after
+        agent-specific injection (e.g. the digest's collector and TTS).
+        """
+        if "tools" not in agent_kwargs:
+            return
+        offered = list(agent_kwargs["tools"] or [])
+        keep = filter_permitted(offered)
+        if len(keep) == len(offered):
+            return
+        withheld = sorted({t.spec.name for t in offered} - {t.spec.name for t in keep})
+        agent_kwargs["tools"] = keep
+        logger.info(
+            "Agent %s tool allowlist: offered=%s withheld=%s",
+            agent_name,
+            sorted(t.spec.name for t in keep),
+            withheld,
+        )
+
     def _run_agent(
         self,
         query,
@@ -208,6 +232,8 @@ class QueryOrchestrator:
             digest_tools = [DigestCollectTool(), TextToSpeechTool()]
             existing = agent_kwargs.get("tools", [])
             agent_kwargs["tools"] = digest_tools + list(existing)
+
+        self._restrict_tools(agent_name, agent_kwargs)
 
         try:
             ag = agent_cls(s.engine, s.model, **agent_kwargs)

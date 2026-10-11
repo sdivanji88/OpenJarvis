@@ -10,6 +10,18 @@ import pytest
 from click.testing import CliRunner
 
 from openjarvis.cli.digest_cmd import digest
+from openjarvis.core.config import load_config
+
+
+@pytest.fixture()
+def home(tmp_path, monkeypatch):
+    path = tmp_path / "home"
+    path.mkdir()
+    monkeypatch.setenv("OPENJARVIS_HOME", str(path))
+    load_config.cache_clear()
+    yield path
+    load_config.cache_clear()
+
 
 # ---------------------------------------------------------------------------
 # CLI tests
@@ -96,27 +108,44 @@ class TestDigestScheduleCLI:
         assert "disabled" in result.output.lower()
         mock_save.assert_called_once_with(enabled=False, cron="0 6 * * *")
 
-    def test_scheduler_task_persists_digest_timezone(self, tmp_path):
+    def test_scheduler_task_persists_digest_timezone(self, home):
         from openjarvis.cli import digest_cmd
         from openjarvis.scheduler.store import SchedulerStore
 
-        config_path = tmp_path / "config.toml"
-        with patch("openjarvis.cli.digest_cmd.DEFAULT_CONFIG_PATH", config_path):
-            task_id = digest_cmd._create_scheduler_task(
-                "0 6 * * *",
-                "America/Los_Angeles",
-            )
+        task_id = digest_cmd._create_scheduler_task("0 6 * * *", "America/Los_Angeles")
 
         assert task_id is not None
-        store = SchedulerStore(tmp_path / "scheduler.db")
+        store = SchedulerStore(home / "scheduler.db")
         task = store.get_task(task_id)
         store.close()
 
         assert task is not None
-        assert task["metadata"] == {"timezone": "America/Los_Angeles"}
+        assert task["metadata"] == {
+            "timezone": "America/Los_Angeles",
+            "misfire_grace_minutes": 180,
+        }
         next_run = datetime.fromisoformat(task["next_run"])
         local_next_run = next_run.astimezone(ZoneInfo("America/Los_Angeles"))
         assert (local_next_run.hour, local_next_run.minute) == (6, 0)
+
+    def test_task_goes_to_the_configured_scheduler_db(self, home, tmp_path):
+        from openjarvis.cli import digest_cmd
+        from openjarvis.scheduler.store import SchedulerStore
+
+        custom = tmp_path / "elsewhere" / "sched.db"
+        custom.parent.mkdir()
+        (home / "config.toml").write_text(f'[scheduler]\ndb_path = "{custom}"\n')
+        load_config.cache_clear()
+
+        task_id = digest_cmd._create_scheduler_task("0 7 * * *", "UTC")
+        assert digest_cmd._cancel_scheduler_tasks() == 1
+
+        store = SchedulerStore(custom)
+        task = store.get_task(task_id)
+        store.close()
+        assert task is not None
+        assert task["status"] == "cancelled"
+        assert not (home / "scheduler.db").exists()
 
 
 # ---------------------------------------------------------------------------

@@ -1568,6 +1568,10 @@ class SchedulerConfig:
     enabled: bool = False
     poll_interval: int = 60
     db_path: str = ""  # Defaults to ~/.openjarvis/scheduler.db
+    # Unattended runs are deny-by-default: `jarvis scheduler start` runs only
+    # these agents and lets them call only these tools.
+    allowed_agents: List[str] = field(default_factory=list)
+    allowed_tools: List[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -1741,6 +1745,7 @@ class DigestConfig:
     voice_id: str = ""
     voice_speed: float = 1.0
     tts_backend: str = "cartesia"
+    autoplay: bool = False  # speak scheduled digests aloud on this machine
     messages: DigestSectionConfig = field(
         default_factory=lambda: DigestSectionConfig(
             sources=["gmail", "slack", "google_tasks"]

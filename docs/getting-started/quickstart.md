@@ -88,12 +88,15 @@ OpenJarvis is a modular AI assistant framework. Here's what developers build wit
     ```bash
     jarvis init --preset scheduled-monitor --force
     jarvis memory index ~/Documents/
-    jarvis scheduler start
-    jarvis scheduler create \
-      --prompt "Check for new emails about Project X" \
-      --schedule "0 9 * * 1-5" --agent operative
+    # Allow the agent and its tools under [scheduler] first:
+    # allowed_agents = ["operative"], allowed_tools = [...]
+    jarvis scheduler start --install   # macOS login service
+    jarvis scheduler create "Check for new emails about Project X" \
+      --type cron --value "0 9 * * 1-5" --agent operative
     # Persistent agent that runs on a cron schedule
     ```
+
+    Scheduled tasks run only in `jarvis scheduler start` (not `jarvis serve`), and only for agents and tools listed in `scheduler.allowed_agents` / `scheduler.allowed_tools`. See [Task Scheduler](../user-guide/scheduler.md#unattended-runs).
 
 For complete copy-paste patterns, see [Code Snippets](snippets.md).
 

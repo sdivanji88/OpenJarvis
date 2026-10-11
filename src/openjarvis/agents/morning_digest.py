@@ -7,6 +7,7 @@ the LLM (narrative synthesis), and text_to_speech (audio generation).
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any, List, Optional
@@ -17,6 +18,8 @@ from openjarvis.core.paths import get_config_dir
 from openjarvis.core.registry import AgentRegistry
 from openjarvis.core.types import Message, Role, ToolCall
 
+logger = logging.getLogger(__name__)
+
 _SECTION_PROMPTS = {
     "messages": "MESSAGES — Prioritize provided messages or tasks needing action.",
     "calendar": "CALENDAR — Cover only provided upcoming events.",
@@ -26,13 +29,23 @@ _SECTION_PROMPTS = {
 }
 
 
+def user_persona_dir() -> Path:
+    """Persona directory under the OpenJarvis home; works from any cwd."""
+    return get_config_dir() / "prompts" / "personas"
+
+
+def checkout_persona_dir() -> Path:
+    """Persona directory in a repo checkout.
+
+    cwd-relative, so it only resolves when run from the repo (not under launchd).
+    """
+    return Path("configs/openjarvis/prompts/personas")
+
+
 def _load_persona(persona_name: str) -> str:
-    """Load a persona prompt file by name."""
-    search_paths = [
-        Path("configs/openjarvis/prompts/personas") / f"{persona_name}.md",
-        get_config_dir() / "prompts" / "personas" / f"{persona_name}.md",
-    ]
-    for p in search_paths:
+    """Load a persona prompt file by name; the checkout copy wins over the user's."""
+    for directory in (checkout_persona_dir(), user_persona_dir()):
+        p = directory / f"{persona_name}.md"
         if p.exists():
             return p.read_text(encoding="utf-8")
     return ""
@@ -210,6 +223,8 @@ class MorningDigestAgent(ToolUsingAgent):
             ),
         )
         tts_result = self._executor.execute(tts_call)
+        if not tts_result.success:
+            logger.warning("Digest TTS failed: %s", tts_result.content)
         audio_path = (
             tts_result.metadata.get("audio_path", "") if tts_result.success else ""
         )
