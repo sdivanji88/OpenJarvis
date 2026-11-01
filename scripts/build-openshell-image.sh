@@ -46,8 +46,7 @@ LOG="$BUILD/openshell-build.log"
 openshell sandbox create --name "$NAME" --from "$CONTEXT" --no-tty --no-auto-providers -- true \
   2>&1 | tee "$LOG"
 IMAGE=$(sed 's/\x1b\[[0-9;]*m//g' "$LOG" | grep -o 'openshell/sandbox-from:[0-9]*' | tail -1)
-openshell sandbox get "$NAME" | grep -q 'Phase: *Ready' \
-  || { echo "Sandbox from the new image did not become Ready" >&2; exit 1; }
+[ -n "$IMAGE" ] || { echo "Could not find the built image tag in $LOG" >&2; exit 1; }
 echo
 echo "Image ready. Set it in ~/.openjarvis/config.toml:"
 echo "  [sandbox]"

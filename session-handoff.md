@@ -19,12 +19,21 @@
     - `agents/factory.py` `build_agent()` used at all 11 construction sites, with a guard test (D-044).
     - `SystemBuilder` hands the shared runner to `JarvisSystem`.
   - D-045: with `runtime = "openshell"`, runs fail closed until the in-sandbox entrypoint and F-031 land.
+  - Also done:
+    - The in-sandbox entrypoint (`sandbox/entrypoint.py`).
+    - The slim image (`deploy/openshell/`), built by `scripts/build-openshell-image.sh`. The build stages a wheel and hash-checked Linux wheels on the host, so the image build needs no network apart from apt `iproute2`, which OpenShell's supervisor needs. The script prints the `[sandbox] image` tag.
+    - End to end: `build_agent(SimpleAgent)` under `runtime = "openshell"` answered "pong" from inside a sandbox, through the gateway.
+  - AC-002, AC-003, AC-004 and AC-005 are `pass` with evidence.
   - Left in F-030:
-    - The in-sandbox entrypoint (`openjarvis.sandbox.entrypoint` does not exist; `Dockerfile.sandbox` references it).
-    - The slim, digest-pinned image with its own build context.
-    - `jarvis doctor` checks.
-    - Dedicated Podman machine guidance.
-    - The Definition of Done gates and acceptance-criteria evidence.
+    - `jarvis doctor` checks (AC-007).
+    - The refusal checks for a machine that isn't rootful and a missing image (AC-006).
+    - Dedicated Podman machine guidance (D-042).
+    - Pruning old `openshell/sandbox-from` images.
+    - Evidence for AC-001 and AC-008.
+    - The Definition of Done gates.
+  - Gateway state:
+    - The inference route points at the **temporary** provider `oj-dev-ollama` (`http://host.openshell.internal:11434/v1`, `qwen3.5:2b`). This stand-in for F-031 bypasses OpenJarvis.
+    - The current image is `openshell/sandbox-from:1793544465`.
 - Full unit suite: 9222 passed. 3 failed in `tests/security/test_data_boundary_audit.py`; they fail the same way without this branch's changes.
 
 ## Earlier session (2026-11-01): OpenShell agent sandboxing — design agreed, spike F-029 run

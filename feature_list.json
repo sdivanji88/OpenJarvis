@@ -1509,10 +1509,11 @@
         "risk": "escalated",
         "summary": "New OpenShell runner selected by [sandbox] runtime = \"openshell\". One pool keyed by (generated agent policy, image digest) with a per-agent pool size (1 for interactive agents such as chat, 0 = create on demand); sandboxes are created with their agent's binary-scoped policy (resolved executables, e.g. /sandbox/.uv/python/**) on a deny-all base, driven over SSH (openshell sandbox ssh-config), used once and deleted; the host checks the policy version before use, cleans up by name prefix at startup, and counts ~35 s pod termination against VM capacity. Slim digest-pinned python:3.12-slim image with a sandbox user, built from its own context with a .dockerignore in a separate build step. Dedicated rootful Podman machine with no macOS folders mounted. Fails closed with jarvis doctor checks (rootful dedicated VM, gateway, image present, creation timeout).",
         "open_questions": [
-          "Does OpenShell cache images built with --from <Dockerfile>, or rebuild on every create?",
-          "Does the sandbox need the openjarvis_rust extension (Linux build stage)?",
+          "RESOLVED: --from <dir> builds once and pushes openshell/sandbox-from:<timestamp> into the cluster; creates from that tag do not rebuild (~1.3 s).",
+          "RESOLVED: the sandbox does not need the openjarvis_rust extension (core imports and the entrypoint run without it).",
           "Filesystem policy behaviour (untested in the spike)",
-          "Per-sandbox CPU / memory limits"
+          "Per-sandbox CPU / memory limits",
+          "Old openshell/sandbox-from images (~600 MB each) accumulate in the cluster after rebuilds; prune them."
         ],
         "decision_refs": [
           "D-029",
@@ -1535,26 +1536,58 @@
         {
           "id": "AC-002",
           "statement": "Sandboxes are drawn from a pool keyed by agent policy and image digest; an agent with pool size 1 gets a pre-created sandbox, pool size 0 creates on demand",
-          "status": "pending",
-          "evidence": []
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "uv run pytest tests/sandbox/test_openshell_pool.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T14:48:52Z",
+              "note": "14 passed: keyed by policy+image, size 1 pre-creates, size 0 creates on demand, claim does not wait for refill. Live: warm run 0.05-0.07 s vs 2.0 s cold."
+            }
+          ]
         },
         {
           "id": "AC-003",
           "statement": "Each sandbox is used for exactly one run and deleted afterwards; changing an agent's policy config never hands out a sandbox with the old policy",
-          "status": "pending",
-          "evidence": []
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "uv run pytest tests/sandbox/test_openshell_pool.py tests/sandbox/test_openshell_runner.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T14:48:52Z",
+              "note": "Sandbox deleted after every run (success, failure, timeout); never handed out twice; a changed policy gets a new sandbox."
+            }
+          ]
         },
         {
           "id": "AC-004",
           "statement": "The generated policy for an agent allows only that agent's configured hosts and binaries on top of the deny-all base (unit-tested)",
-          "status": "pending",
-          "evidence": []
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "uv run pytest tests/sandbox/test_openshell_policy.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T14:48:52Z",
+              "note": "17 passed: deny-all base, only configured hosts, one rule scoped to the image's resolved Python, invalid hosts/ports rejected."
+            }
+          ]
         },
         {
           "id": "AC-005",
           "statement": "The OpenShell image is built from its own context in a separate step, runs as the sandbox user, and its base image is pinned by digest",
-          "status": "pending",
-          "evidence": []
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "scripts/build-openshell-image.sh",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T14:48:52Z",
+              "note": "Built deploy/openshell (own context, python:3.12-slim pinned by index digest, sandbox user, root-owned venv, offline hash-checked install) and pushed openshell/sandbox-from:1793544465; build_agent(SimpleAgent) under runtime=openshell answered 'pong' from inside the sandbox via the gateway."
+            }
+          ]
         },
         {
           "id": "AC-006",
