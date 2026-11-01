@@ -467,6 +467,28 @@ class TestSandboxConfig:
         assert cfg.sandbox.timeout == 600
         assert cfg.sandbox.runtime == "podman"
 
+    def test_openshell_per_agent_settings_default_to_empty(self) -> None:
+        sc = SandboxConfig()
+        assert sc.allowed_hosts == {}
+        assert sc.pool_sizes == {}
+
+    def test_loads_openshell_per_agent_settings_from_toml(self, tmp_path: Path) -> None:
+        toml_file = tmp_path / "config.toml"
+        toml_file.write_text(
+            "[sandbox]\n"
+            'runtime = "openshell"\n'
+            "[sandbox.allowed_hosts]\n"
+            'deep_research = ["api.example.com", "docs.example.com:8443"]\n'
+            "[sandbox.pool_sizes]\n"
+            "chat = 1\n"
+        )
+        cfg = load_config(toml_file)
+        assert cfg.sandbox.runtime == "openshell"
+        assert cfg.sandbox.allowed_hosts == {
+            "deep_research": ["api.example.com", "docs.example.com:8443"]
+        }
+        assert cfg.sandbox.pool_sizes == {"chat": 1}
+
 
 # ---------------------------------------------------------------------------
 # Scheduler config tests

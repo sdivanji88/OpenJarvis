@@ -8,9 +8,10 @@ from typing import Callable, Dict, List, Optional
 
 import pytest
 
+from openjarvis.core.config import SandboxConfig
 from openjarvis.sandbox.openshell_cli import OpenShellError, SandboxTimeout
 from openjarvis.sandbox.openshell_policy import build_policy, render_policy
-from openjarvis.sandbox.openshell_runner import OpenShellRunner
+from openjarvis.sandbox.openshell_runner import OpenShellRunner, shared_runner
 
 START = "---OPENJARVIS_OUTPUT_START---"
 END = "---OPENJARVIS_OUTPUT_END---"
@@ -171,3 +172,46 @@ class TestLifecycle:
         runner.start()
         runner.shutdown()
         assert not [n for n in shell.sandboxes if n.startswith("oj-")]
+
+    def test_close_shuts_down(self, shell):
+        runner = make_runner(shell, pool_sizes={"chat": 1})
+        runner.start()
+        runner.close()
+        assert shell.sandboxes == {}
+
+
+class TestSharedRunner:
+    @pytest.fixture(autouse=True)
+    def _fresh(self):
+        shared_runner.cache_clear()
+        yield
+        shared_runner.cache_clear()
+
+    def config(self, **overrides) -> SandboxConfig:
+        return SandboxConfig(runtime="openshell", image="img@sha256:1", **overrides)
+
+    def test_none_unless_runtime_is_openshell(self):
+        assert shared_runner(SandboxConfig(runtime="docker")) is None
+
+    def test_one_started_runner_per_config(self):
+        shells: List[FakeShell] = []
+
+        def make_shell(image: str) -> FakeShell:
+            shells.append(FakeShell())
+            return shells[-1]
+
+        config = self.config(pool_sizes={"chat": 1})
+        first = shared_runner(config, shell_factory=make_shell)
+        second = shared_runner(config, shell_factory=make_shell)
+        assert first is second
+        assert len(shells) == 1
+        assert [n for n in shells[0].sandboxes if n.startswith("oj-chat-")]
+        first.shutdown()
+
+    def test_gateway_down_still_returns_a_runner_that_fails_closed(self):
+        shell = FakeShell()
+        shell.ready = False
+        shell.create_error = "connection refused"
+        runner = shared_runner(self.config(), shell_factory=lambda image: shell)
+        result = runner.run(request())
+        assert result["error_type"] == "sandbox_unavailable"

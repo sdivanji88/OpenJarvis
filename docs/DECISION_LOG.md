@@ -414,3 +414,21 @@ Entry format:
 - **Decision:** The gateway gets its own key that only works on a new pass-through model endpoint; the host fixes the engine and model regardless of the request and enforces a per-run budget.
 - **Supersedes:** none (refines D-033)
 - **Recorded in:** feature_list.json F-031
+
+## D-044 — Every agent is constructed through one factory that applies the sandbox
+
+- **Date:** 2026-11-01
+- **Scope:** feature F-030
+- **Premise:** During F-030 implementation the developer was shown that `SystemBuilder` builds a `ContainerRunner` that no code ever uses: nothing wraps an agent in `SandboxedAgent`, so `[sandbox] enabled = true` has no effect today. Agents are constructed in about eight places (`cli/ask.py`, `cli/chat_cmd.py`, `cli/serve.py`, `sdk.py`, `system/orchestrator.py`, `agents/executor.py` twice, `agents/hybrid/runner.py`). Options offered: one factory every site calls, a hook in `AgentRegistry.get`, or wiring only the server and scheduler paths.
+- **Decision:** One agent factory in `agents/` that every construction site calls; it wraps the agent in `SandboxedAgent` with the OpenShell runner when `[sandbox] runtime = "openshell"`. Chosen by the developer over the registry hook (too implicit) and partial wiring (leaves CLI runs on the host).
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-030
+
+## D-045 — Wire the OpenShell runner in before the entrypoint and model access exist
+
+- **Date:** 2026-11-01
+- **Scope:** feature F-030
+- **Premise:** A sandboxed agent needs an in-sandbox entrypoint (the existing `Dockerfile.sandbox` names an `openjarvis.sandbox.entrypoint` module that does not exist) and model access through the gateway (F-031). Options offered: build the image and entrypoint first and keep wiring off until F-031; wire now; or pull F-031 into F-030.
+- **Decision:** Wire the runner into every agent construction path now. With `runtime = "openshell"`, runs fail closed with a clear error until the entrypoint and F-031 land; the default runtime is unchanged, so nothing changes for users who have not opted in.
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-030

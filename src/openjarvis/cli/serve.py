@@ -411,7 +411,11 @@ def serve(
                         system_prompt_config=config.system_prompt,
                     )
 
-                agent = agent_cls(engine, model_name, **agent_kwargs)
+                from openjarvis.agents.factory import build_agent
+
+                agent = build_agent(
+                    agent_cls, engine, model_name, config=config, **agent_kwargs
+                )
                 from openjarvis.security.runtime import wire_agent_security
 
                 wire_agent_security(

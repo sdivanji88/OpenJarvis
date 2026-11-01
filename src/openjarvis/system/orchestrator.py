@@ -235,13 +235,17 @@ class QueryOrchestrator:
 
         self._restrict_tools(agent_name, agent_kwargs)
 
+        from openjarvis.agents.factory import build_agent
+
         try:
-            ag = agent_cls(s.engine, s.model, **agent_kwargs)
+            ag = build_agent(
+                agent_cls, s.engine, s.model, config=s.config, **agent_kwargs
+            )
         except TypeError:
             try:
-                ag = agent_cls(s.engine, s.model)
+                ag = build_agent(agent_cls, s.engine, s.model, config=s.config)
             except TypeError:
-                ag = agent_cls()
+                ag = build_agent(agent_cls, config=s.config)
 
         from openjarvis.security.runtime import wire_agent_security
 

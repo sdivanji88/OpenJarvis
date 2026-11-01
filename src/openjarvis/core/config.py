@@ -1557,6 +1557,10 @@ class SandboxConfig:
     mount_allowlist_path: str = ""
     max_concurrent: int = 5
     runtime: str = "docker"
+    # OpenShell runtime: network hosts each agent may reach ("host" or
+    # "host:port"), and how many sandboxes to keep warm per agent.
+    allowed_hosts: Dict[str, List[str]] = field(default_factory=dict)
+    pool_sizes: Dict[str, int] = field(default_factory=dict)
     wasm_fuel_limit: int = 1_000_000
     wasm_memory_limit_mb: int = 256
 

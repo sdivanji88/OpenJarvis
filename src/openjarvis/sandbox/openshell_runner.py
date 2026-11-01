@@ -7,14 +7,31 @@ to running on the host.
 
 from __future__ import annotations
 
+import atexit
 import json
 import logging
 import re
 import shlex
 import subprocess
-from typing import Any, Dict, List, Mapping, Optional, Protocol, Sequence
+import threading
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Protocol,
+    Sequence,
+    Tuple,
+)
 
-from openjarvis.sandbox.openshell_cli import OpenShellError, SandboxTimeout
+from openjarvis.core.config import SandboxConfig
+from openjarvis.sandbox.openshell_cli import (
+    OpenShellCLI,
+    OpenShellError,
+    SandboxTimeout,
+)
 from openjarvis.sandbox.openshell_policy import build_policy, render_policy
 from openjarvis.sandbox.openshell_pool import OpenShell, SandboxPool
 from openjarvis.sandbox.runner import ContainerRunner
@@ -72,6 +89,8 @@ class OpenShellRunner:
             self._pool.cleanup_orphans()
         except OpenShellError:
             logger.warning("Sandbox cleanup at shutdown failed", exc_info=True)
+
+    close = shutdown
 
     def run(
         self,
@@ -140,4 +159,59 @@ class OpenShellRunner:
         return f"env {assignments} {self._command}"
 
 
-__all__ = ["DEFAULT_COMMAND", "OpenShellRunner", "OpenShellRuntime"]
+_shared: Dict[Tuple[str, ...], OpenShellRunner] = {}
+_shared_lock = threading.Lock()
+
+
+def shared_runner(
+    sandbox: SandboxConfig,
+    *,
+    shell_factory: Optional[Callable[[str], OpenShellRuntime]] = None,
+) -> Optional[OpenShellRunner]:
+    """Return the process-wide runner for ``sandbox``, or None if not OpenShell.
+
+    The runner is started once (orphan cleanup, warm pools) and shut down at
+    exit. If OpenShell is unavailable the runner is still returned, so agent
+    runs are refused instead of silently running on the host.
+    """
+    if sandbox.runtime != "openshell":
+        return None
+    key = (
+        sandbox.image,
+        str(sandbox.timeout),
+        json.dumps(sandbox.allowed_hosts, sort_keys=True),
+        json.dumps(sandbox.pool_sizes, sort_keys=True),
+    )
+    with _shared_lock:
+        runner = _shared.get(key)
+        if runner is not None:
+            return runner
+        make_shell = shell_factory or (lambda image: OpenShellCLI(image=image))
+        runner = OpenShellRunner(
+            make_shell(sandbox.image),
+            image_id=sandbox.image,
+            allowed_hosts=sandbox.allowed_hosts,
+            pool_sizes=sandbox.pool_sizes,
+            timeout=sandbox.timeout,
+        )
+        try:
+            runner.start()
+        except OpenShellError as exc:
+            logger.error(
+                "OpenShell sandbox runtime unavailable; agent runs will be refused: %s",
+                exc,
+            )
+        atexit.register(runner.shutdown)
+        _shared[key] = runner
+        return runner
+
+
+def _clear_shared() -> None:
+    with _shared_lock:
+        _shared.clear()
+
+
+shared_runner.cache_clear = _clear_shared  # type: ignore[attr-defined]
+
+
+__all__ = ["DEFAULT_COMMAND", "OpenShellRunner", "OpenShellRuntime", "shared_runner"]

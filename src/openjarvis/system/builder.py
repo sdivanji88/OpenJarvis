@@ -558,6 +558,10 @@ class SystemBuilder:
             pass  # scheduler injection handled post-build
 
     def _setup_sandbox(self, config):
+        if config.sandbox.runtime == "openshell":
+            from openjarvis.sandbox import openshell_runner
+
+            return openshell_runner.shared_runner(config.sandbox)
         sandbox_enabled = (
             self._sandbox if self._sandbox is not None else config.sandbox.enabled
         )

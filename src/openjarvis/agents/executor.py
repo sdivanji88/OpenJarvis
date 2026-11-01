@@ -16,7 +16,9 @@ from openjarvis.agents.errors import (
     classify_error,
     retry_delay,
 )
+from openjarvis.agents.factory import build_agent
 from openjarvis.agents.tool_resolver import resolve_agent_tools
+from openjarvis.core.config import JarvisConfig, load_config
 from openjarvis.core.events import EventBus, EventType
 
 if TYPE_CHECKING:
@@ -139,6 +141,11 @@ class AgentExecutor:
         except Exception:
             pass  # Non-critical
 
+    def _jarvis_config(self) -> JarvisConfig:
+        # Without a system, read the config from disk rather than default to
+        # one without the sandbox runtime.
+        return getattr(self._system, "config", None) or load_config()
+
     def run_ephemeral(
         self,
         agent_type: str,
@@ -156,7 +163,9 @@ class AgentExecutor:
             else getattr(self._manager, "_engine", None)
         )
         if not tools:
-            agent = agent_cls(
+            agent = build_agent(
+                agent_cls,
+                config=self._jarvis_config(),
                 engine=engine,
                 system_prompt=system_prompt,
                 bus=self._bus,
@@ -188,7 +197,9 @@ class AgentExecutor:
             else OrchestratorAgent
         )
         system = self._system
-        agent = execution_cls(
+        agent = build_agent(
+            execution_cls,
+            config=self._jarvis_config(),
             engine=engine,
             model=getattr(system, "model", "") or _AGENT_TICK_DEFAULT_MODEL,
             system_prompt=system_prompt,
@@ -582,23 +593,30 @@ class AgentExecutor:
                     system_prompt_config=getattr(cfg, "system_prompt", None),
                 )
 
+        jarvis_config = self._jarvis_config()
         try:
             try:
-                agent_instance = execution_agent_cls(
+                agent_instance = build_agent(
+                    execution_agent_cls,
                     engine,
                     model,
+                    config=jarvis_config,
                     **agent_kwargs,
                     **state_kwargs,
                 )
             except TypeError:
                 try:
-                    agent_instance = execution_agent_cls(
+                    agent_instance = build_agent(
+                        execution_agent_cls,
                         engine,
                         model,
+                        config=jarvis_config,
                         **agent_kwargs,
                     )
                 except TypeError:
-                    agent_instance = execution_agent_cls(engine, model)
+                    agent_instance = build_agent(
+                        execution_agent_cls, engine, model, config=jarvis_config
+                    )
         except Exception:
             resolved_toolkit.close()
             raise
