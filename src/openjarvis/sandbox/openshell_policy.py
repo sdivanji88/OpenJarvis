@@ -4,7 +4,8 @@ Every policy starts from a deny-all base: no network access, writes only
 under ``/sandbox`` and ``/tmp``, processes run as the ``sandbox`` user.
 Allowed hosts are added as a single network rule scoped to the binaries
 that may use them. OpenShell matches the resolved executable, so the
-default binaries include the uv-managed Python behind the venv symlink.
+default binaries include the image's Python behind the venv symlink
+(see ``deploy/openshell/Dockerfile``).
 """
 
 from __future__ import annotations
@@ -15,7 +16,7 @@ from typing import Any, Dict, List, Sequence
 
 DEFAULT_BINARIES = (
     "/sandbox/.venv/bin/python3",
-    "/sandbox/.uv/python/**",
+    "/usr/local/bin/python3.12",
 )
 
 _LABEL = r"[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?"

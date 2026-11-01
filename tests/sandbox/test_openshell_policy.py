@@ -54,7 +54,7 @@ class TestAllowedHosts:
         policy = build_policy(["example.com"])
         (rule,) = policy["network_policies"].values()
         paths = [b["path"] for b in rule["binaries"]]
-        assert "/sandbox/.uv/python/**" in paths
+        assert paths == ["/sandbox/.venv/bin/python3", "/usr/local/bin/python3.12"]
 
     def test_custom_binaries_replace_the_default(self):
         policy = build_policy(["example.com"], binaries=["/usr/bin/git"])
