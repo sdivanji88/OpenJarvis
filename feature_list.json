@@ -1394,7 +1394,7 @@
       "description": "Time-boxed spike that confirms the OpenShell behaviour the sandbox design relies on, before building it. Findings go in docs/spikes/openshell/FINDINGS.md.",
       "priority": "required",
       "dependencies": [],
-      "status": "todo",
+      "status": "verifying",
       "design": {
         "status": "agreed",
         "risk": "escalated",
@@ -1411,41 +1411,89 @@
         {
           "id": "AC-001",
           "statement": "Sandbox creation time (cold and warm image) is measured and recorded in docs/spikes/openshell/FINDINGS.md",
-          "status": "pending",
-          "evidence": []
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "python3 docs/spikes/openshell/time_create.py base 5 docs/spikes/openshell/policies/deny_all.yaml",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T13:40:00Z",
+              "note": "Cached base image: create median 2.0 s (1.9-2.7 s); cold first pull of the 1.13 GB base image took 29 min 20 s. OpenJarvis image cold time not measured: OpenShell cannot build Dockerfile.sandbox as-is (Finding B3). Details: docs/spikes/openshell/FINDINGS.md#q1-how-long-does-creating-a-sandbox-take"
+            }
+          ]
         },
         {
           "id": "AC-002",
           "statement": "A live sandbox's network policy is changed with `openshell policy set` and the change is observed to take effect (allowed host reachable, other hosts blocked)",
-          "status": "pending",
-          "evidence": []
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "openshell policy set --policy docs/spikes/openshell/policies/allow_example.yaml --wait oj-spike-deny (then deny_all.yaml), probing with net_probe.sh over SSH",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T13:40:00Z",
+              "note": "example.com went BLOCKED -> ALLOWED -> BLOCKED on the live sandbox while pypi.org and curl stayed BLOCKED; each policy set took 2-10 s. Details: docs/spikes/openshell/FINDINGS.md#q3-does-openshell-policy-set-change-a-live-sandboxs-network-policy"
+            }
+          ]
         },
         {
           "id": "AC-003",
           "statement": "Whether a provider can be attached to an existing sandbox is recorded, with the command and output",
-          "status": "pending",
-          "evidence": []
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "openshell sandbox --help; openshell settings --help; openshell provider update oj-spike-dummy --credential SPIKE_TOKEN=spike-dummy-token-ROTATED, then curl httpbin.org/headers from the running and a new sandbox",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T13:40:00Z",
+              "note": "No command attaches a provider to a running sandbox, and credentials are fixed at creation (running sandbox kept the old value, a new one got the rotated value). Recorded as REFUTED. Details: docs/spikes/openshell/FINDINGS.md#q4-can-a-provider-be-attached-after-a-sandbox-is-created"
+            }
+          ]
         },
         {
           "id": "AC-004",
           "statement": "An agent inside a sandbox completes a chat call through the OpenShell inference gateway with OpenJarvis /v1/chat/completions as upstream",
-          "status": "pending",
-          "evidence": []
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "openshell inference set --provider oj-spike-jarvis --model qwen3.5:2b (OPENAI_BASE_URL=http://host.openshell.internal:8000/v1); then infer_probe.py in a deny-all sandbox",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T13:40:00Z",
+              "note": "https://inference.local/v1/chat/completions returned 200 with content 'ok' and no keys in the sandbox; telemetry.db went 37 -> 38 rows (model qwen3.5:2b, engine ollama). Details: docs/spikes/openshell/FINDINGS.md#q5-can-the-inference-gateway-forward-to-openjarvis-v1-and-can-that-endpoint-be-limited-to-the-gateway"
+            }
+          ]
         },
         {
           "id": "AC-005",
           "statement": "A deny-all pooled sandbox is shown to have no network access before its agent policy is applied",
-          "status": "pending",
-          "evidence": []
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "openshell sandbox create --name oj-spike-deny --from base --policy docs/spikes/openshell/policies/deny_all.yaml --upload docs/spikes/openshell/net_probe.sh:/sandbox -- sh /sandbox/net_probe.sh https://example.com https://pypi.org http://host.containers.internal:11434/api/tags",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T13:40:00Z",
+              "note": "All three BLOCKED from the first command; the default-policy control allowed pypi.org. Details: docs/spikes/openshell/FINDINGS.md#q2-can-a-pooled-deny-all-sandbox-reach-the-network-before-its-policy-is-applied"
+            }
+          ]
         }
       ],
       "verification": {
-        "commands": [],
-        "manual_checks": [],
+        "commands": [
+          "python3 docs/spikes/openshell/time_create.py base 5 docs/spikes/openshell/policies/deny_all.yaml",
+          "openshell policy set --policy docs/spikes/openshell/policies/allow_example.yaml --wait oj-spike-deny (then deny_all.yaml), probing with net_probe.sh over SSH",
+          "openshell sandbox --help; openshell settings --help; openshell provider update oj-spike-dummy --credential SPIKE_TOKEN=spike-dummy-token-ROTATED, then curl httpbin.org/headers from the running and a new sandbox",
+          "openshell inference set --provider oj-spike-jarvis --model qwen3.5:2b (OPENAI_BASE_URL=http://host.openshell.internal:8000/v1); then infer_probe.py in a deny-all sandbox",
+          "openshell sandbox create --name oj-spike-deny --from base --policy docs/spikes/openshell/policies/deny_all.yaml --upload docs/spikes/openshell/net_probe.sh:/sandbox -- sh /sandbox/net_probe.sh https://example.com https://pypi.org http://host.containers.internal:11434/api/tags"
+        ],
+        "manual_checks": [
+          "Findings and implications reviewed in docs/spikes/openshell/FINDINGS.md"
+        ],
         "last_verified_at": null
       },
       "blocker": null,
-      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md"
+      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md Spike run 2026-11-01; D-031, D-034 and D-037 need revisiting (see FINDINGS 'Implications')."
     },
     {
       "id": "F-030",

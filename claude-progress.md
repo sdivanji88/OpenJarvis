@@ -168,3 +168,29 @@ None.
 Both are folded into F-025's summary and its criteria AC-002 and AC-004.
 
 **Next session**: dispatch the orchestrator for F-025.
+
+### Session 8 -- 2026-11-01T13:45:00Z (design-consensus: OpenShell sandboxing; spike F-029)
+
+**What was done**:
+- Interviewed the user about running agents in OpenShell sandboxes. Agreed D-029 to D-038:
+  - Every agent run goes into a single-use sandbox from a warm pool of two, owned by the host.
+  - Model calls go through the OpenShell inference gateway to OpenJarvis `/v1`.
+  - All tools run inside the sandbox, with short-lived, minimum-permission tokens.
+  - Policies are generated from config; memory goes in as a read-only snapshot.
+  - The run fails closed when OpenShell is unavailable.
+  - The work is split into a spike plus four features.
+- Added F-029 (spike) and F-030 to F-033 to feature_list.json.
+- Ran spike F-029 against OpenShell 0.0.21 with Podman 6.0.2, using only dummy credentials. Findings are in `docs/spikes/openshell/FINDINGS.md`:
+  - The gateway needs a rootful Podman machine, and OpenShell's doctor does not detect this.
+  - The `python` community image is not public; `base` is 1.13 GB and took 29 min to pull.
+  - With a cached image, creating a sandbox takes ~2 s and an SSH round trip ~20 ms.
+  - Deny-all is enforced from the first command. Live policy changes work but take 2–10 s, and rules match resolved binaries.
+  - Providers cannot be attached after creation, and their credentials never enter the sandbox: the proxy substitutes them in headers and URL query strings, not in bodies.
+  - The inference gateway works through `host.openshell.internal`, and telemetry recorded the call. The gateway forces a single model.
+  - Deletion is asynchronous, with ~35 s of pod termination.
+  - OpenShell can't build `Dockerfile.sandbox` as-is, and any image needs a `sandbox` user.
+- F-029 is `verifying`, with evidence on all five acceptance criteria.
+
+**Gates**: `scripts/validate-harness.sh` passes. Only docs, trackers and spike scripts changed.
+
+**Next session**: design-consensus to revisit D-031, D-034 and D-037; then plan F-030.

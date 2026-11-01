@@ -2,11 +2,29 @@
 
 > Read this at the start of every session. Update it before ending every session.
 
-**Last updated:** 2026-10-11T17:15:00Z
+**Last updated:** 2026-11-01T13:45:00Z
 
 ---
 
-## What was accomplished
+## Latest session (2026-11-01): OpenShell agent sandboxing — design agreed, spike F-029 run
+
+- **Design agreed (D-029 to D-038), features F-029 to F-033 added.** Every agent run executes in a disposable OpenShell sandbox from a warm pool. Model calls go through the OpenShell inference gateway to OpenJarvis `/v1`, and the run fails closed when OpenShell is unavailable. Spec and plan are local only (gitignored): `docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md`, `docs/superpowers/plans/2026-11-01-openshell-spike-f029.md`.
+- **Spike F-029 is `verifying`.** Findings are in `docs/spikes/openshell/FINDINGS.md`.
+  - Creating a sandbox takes ~2 s with a cached image. Deny-all is enforced from the first command. Live policy changes work but take 2–10 s.
+  - Providers can't be attached after creation. Their credentials never enter the sandbox: the sandbox holds a placeholder that the proxy substitutes in headers and URL query strings.
+  - The gateway forwards to `jarvis serve` through `host.openshell.internal`, and telemetry records the call.
+- **Machine state:**
+  - The Podman machine is now **rootful**, which the gateway requires. The gateway `openshell` is running in the Podman VM.
+  - The 1.13 GB `base` image is cached in the cluster.
+  - The gateway's inference route still names the deleted provider `oj-spike-jarvis`. Overwrite it with `openshell inference set` before relying on it.
+
+### Next step — start here
+
+Run design-consensus on the three decisions the spike invalidated: D-031 (apply policy and tokens at claim time), D-034 (uploaded tokens; use OpenShell providers instead) and D-037 (image from `Dockerfile.sandbox`). See FINDINGS "Implications". Then plan F-030 from the findings. Mark F-029 `verified` after review.
+
+---
+
+## What was accomplished (previous sessions)
 
 - **F-025 (WhatsApp business updates in the morning digest): design agreed, not built.** This was a design-only session; decisions D-018 to D-026 are in `docs/DECISION_LOG.md`.
   - A new `whatsapp_desktop` connector will read the WhatsApp Mac app's local SQLite data read-only, for business chats only. Certified business names are included automatically, profile-only chats need approval through `jarvis whatsapp review`, and an exclude list overrides both.

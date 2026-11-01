@@ -414,3 +414,119 @@ the pool counts terminating pods against the Podman VM's capacity (4 CPUs,
 8 GiB here). The host must own the inference route and reset it with
 `inference set` at startup.
 ## Implications for F-030 – F-033
+
+Decisions that hold as agreed:
+
+- **D-029 (each agent run in a disposable sandbox) holds.** Sandboxes are
+  cheap once the image is cached (~2 s create, ~20 ms SSH round trip), and
+  deny-all is enforced from the first command (Q2).
+- **D-030 (warm pool of two, single use) holds.** Refill takes ~2 s (Q1).
+  The pool must count the ~35 s of pod termination after each release
+  against the Podman VM's capacity (Q7).
+- **D-032 (fail closed) holds, with more to check.** `jarvis doctor` must
+  check a rootful Podman machine (B1), a reachable gateway, the sandbox
+  image already present in the cluster (B2), and a creation timeout,
+  because a broken image is reported as `Provisioning` forever (B4).
+- **D-033 (model calls through the OpenShell gateway to OpenJarvis `/v1`)
+  holds (Q5).** Two refinements for F-031: the host endpoint should be a
+  plain engine pass-through rather than an agent (a one-line question cost
+  13,351 prompt tokens), and the gateway forces one model for every sandbox,
+  so per-agent model and local-versus-cloud choice must be made on the host
+  side of the gateway.
+- **D-035 (policies generated from config on a deny-all base) holds, with a
+  richer shape.** Rules are scoped to binaries and match the resolved
+  executable (`/sandbox/.uv/python/**`, not `.venv/bin/python3`) (Q3), and
+  L7 rules (`protocol: rest`, method/path, `access: read-only`) are
+  available. OpenShell's default policy is permissive, so OpenJarvis must
+  always pass its own policy (Q2).
+- **D-036 (read-only memory snapshot in, results out) is unaffected.**
+  Uploads must target a directory (Q2).
+
+Decisions that need a new D-NNN entry through design-consensus:
+
+1. **D-031 (pool starts deny-all; the agent's policy and tokens are applied
+   at claim).** The live policy change works (Q3) but takes 2–10 s per
+   claim, and providers cannot be attached to a running sandbox at all
+   (Q4). Applying everything at claim time would put up to ~10 s on every
+   run and still could not use providers. Likely replacement: per-agent
+   pools, created with that agent's `--policy` and `--provider`s (creation
+   is ~2 s, so a pool of one or two per agent type is cheap).
+2. **D-034 (short-lived tokens uploaded into the sandbox).** OpenShell
+   providers are strictly stronger: the sandbox holds only a placeholder
+   (`openshell:resolve:env:SPIKE_TOKEN`), and the proxy substitutes the real
+   value in headers and URL query strings on allowed, TLS-terminated
+   endpoints (Q4). An uploaded file is readable by the agent. New
+   constraints: credentials are fixed at sandbox creation, so pooled
+   sandboxes must be replaced before their tokens expire, and allowed hosts
+   for credentialed agents must not echo or store headers or URLs.
+3. **D-037 (image built from `deploy/docker/Dockerfile.sandbox` via
+   `--from`).** OpenShell cannot build it as-is (wrong build context, B3),
+   and any image must include a `sandbox` user and group (B4). F-030 needs
+   an OpenShell-specific image definition (and a `.dockerignore`), built
+   from a dedicated context or pushed to a registry the cluster can pull
+   from. Every megabyte is paid on the first pull (1.13 GB took 29 min here).
+
+Not covered by the spike: OAuth token lifetimes for long runs (deferred to
+F-032 per the plan), and the OpenJarvis image's own cold build and pull time
+(blocked by B3).
+
+Decisions that hold as agreed:
+
+- **D-029 (OpenShell runtime behind `SandboxedAgent`), D-032 (fail closed),
+  D-036 (read-only snapshot in, host writes SQLite).** Nothing in the spike
+  contradicts them. D-032's `jarvis doctor` check must cover more than
+  planned: a rootful Podman machine (B1), `DOCKER_HOST`, a reachable gateway,
+  and the sandbox image being present in the cluster (B2).
+- **D-033 (model calls through the gateway to OpenJarvis `/v1`).** Works
+  end to end with no measurable latency, keys stay out of the sandbox, and
+  telemetry is recorded (Q5). F-031 additionally needs: a pass-through mode
+  for the host endpoint (today it wraps requests in an agent, 13k prompt
+  tokens for one line), engine and model choice on the host side (the
+  gateway forces one model for all sandboxes), a way to tag calls with the
+  agent, and the host owning and resetting the gateway-wide route at
+  startup.
+- **D-030 (warm pool, two by default).** Creation takes about 2 s with a
+  cached image (Q1), so two is enough. Pod termination takes about 35 s
+  (Q7) and counts against the Podman VM (4 CPUs, 8 GiB).
+- **D-035 (policies generated from config).** Holds, but rules are scoped
+  per binary and match the resolved executable (Q3), so generated policies
+  must list binaries such as `/sandbox/.uv/python/**`, not just hosts.
+
+Decisions that need a new design-consensus entry:
+
+1. **D-031 (pooled sandboxes start deny-all; agent policy and tokens applied
+   at claim).** Live policy changes work and deny-all holds from the first
+   command (Q2, Q3), but each change takes 2–10 s, which would land on every
+   run. Credentials cannot be attached after creation and are fixed when a
+   sandbox is created (Q4). Recommendation: **per-agent pools**. Each
+   agent's sandboxes are created with that agent's policy and providers
+   (`--policy`, `--provider` at create time, about 2 s, off the request
+   path), and are refilled before the agent's tokens expire.
+2. **D-034 (tools inside, short-lived tokens uploaded per run).** OpenShell
+   providers are strictly better than uploaded token files: the sandbox only
+   ever sees a placeholder (`openshell:resolve:env:<KEY>`), and the proxy
+   substitutes the real value in headers and URL query strings on allowed,
+   TLS-terminated endpoints (Q4). Uploaded files are readable by the agent.
+   Recommendation: **use providers** for connector credentials. Remaining
+   risk: leaking through an allowed host that echoes or stores headers or
+   URLs, so credentialed agents' policies must list exact API hosts only.
+3. **D-037 (image built from `deploy/docker/Dockerfile.sandbox` via
+   `--from`).** Does not work as-is: OpenShell uses the Dockerfile's
+   directory as the build context (B3), and every image needs a `sandbox`
+   user and group (B4). Recommendation: an OpenShell-specific image
+   definition with a `sandbox` user, a `/sandbox` work directory, a
+   `.dockerignore`, and a context OpenShell can build from (or a pre-built
+   image pulled from a registry). Pre-pull it before the pool starts.
+
+Runner mechanics for F-030 (no decision needed):
+
+- Drive pooled sandboxes over SSH (`openshell sandbox ssh-config` plus
+  `ssh`): clean stdout, exit codes propagated, about 20 ms per command (Q6).
+  Keep the sentinel markers as a guard.
+- Upload to a directory and verify the file exists; `--upload file:filepath`
+  silently uploads nothing (Q2).
+- Name sandboxes with a fixed prefix and clean up by prefix at startup;
+  there are no labels or JSON output (Q7).
+- Use its own creation timeout and read pod status or `openshell logs` on
+  failure, because a crash-looping sandbox stays `Provisioning` (B4).
+- Surface `openshell logs` denial lines in OpenJarvis's audit log (Q3).
