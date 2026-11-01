@@ -1387,6 +1387,295 @@
       },
       "blocker": null,
       "note": "Spike answered: the scheduler service can read WhatsApp's Group Container on this macOS without Full Disk Access."
+    },
+    {
+      "id": "F-029",
+      "title": "Spike: confirm OpenShell 0.0.21 behaviour on macOS + Podman",
+      "description": "Time-boxed spike that confirms the OpenShell behaviour the sandbox design relies on, before building it. Findings go in docs/spikes/openshell/FINDINGS.md.",
+      "priority": "required",
+      "dependencies": [],
+      "status": "todo",
+      "design": {
+        "status": "agreed",
+        "risk": "escalated",
+        "summary": "Measure sandbox creation time through the gateway on macOS with Podman; confirm `openshell policy set` changes a live sandbox's network policy; check whether a provider can be attached after creation; confirm the gateway's inference upstream can point at OpenJarvis /v1/chat/completions; check whether a deny-all sandbox can make any network call between creation and policy application.",
+        "open_questions": [
+          "Can the host /v1 endpoint be restricted to the gateway only?"
+        ],
+        "decision_refs": [
+          "D-031",
+          "D-038"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "Sandbox creation time (cold and warm image) is measured and recorded in docs/spikes/openshell/FINDINGS.md",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-002",
+          "statement": "A live sandbox's network policy is changed with `openshell policy set` and the change is observed to take effect (allowed host reachable, other hosts blocked)",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-003",
+          "statement": "Whether a provider can be attached to an existing sandbox is recorded, with the command and output",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-004",
+          "statement": "An agent inside a sandbox completes a chat call through the OpenShell inference gateway with OpenJarvis /v1/chat/completions as upstream",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-005",
+          "statement": "A deny-all pooled sandbox is shown to have no network access before its agent policy is applied",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md"
+    },
+    {
+      "id": "F-030",
+      "title": "OpenShell runtime for SandboxedAgent with a warm pool",
+      "description": "Add OpenShell as a runtime behind SandboxedAgent so every agent run executes in a single-use sandbox drawn from a warm pool, with per-agent policies generated from config and fail-closed behaviour.",
+      "priority": "required",
+      "dependencies": [
+        "F-029"
+      ],
+      "status": "todo",
+      "design": {
+        "status": "agreed",
+        "risk": "escalated",
+        "summary": "New OpenShell runner selected by [sandbox] runtime = \"openshell\". A host-owned warm pool (default 2, configurable) of deny-all sandboxes built from deploy/docker/Dockerfile.sandbox via --from; each run claims one, gets its agent policy applied with `openshell policy set`, and the sandbox is deleted after the run; the pool refills in the background and drains on shutdown. Per-agent policy YAML is generated from [sandbox.agents.<id>] (allowed_hosts, providers) on a built-in deny-all base. If the gateway or container runtime is unavailable, the run is refused and `jarvis doctor` reports it; there is never a host fallback.",
+        "open_questions": [
+          "Does chat feel fast enough with a pool of two?"
+        ],
+        "decision_refs": [
+          "D-029",
+          "D-030",
+          "D-031",
+          "D-032",
+          "D-035",
+          "D-037"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "With [sandbox] runtime = \"openshell\", every agent run (including chat) executes inside an OpenShell sandbox",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-002",
+          "statement": "Each sandbox is used for exactly one run and is deleted afterwards; the pool refills to its configured size",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-003",
+          "statement": "The generated policy for an agent allows only that agent's configured hosts on top of the deny-all base (unit-tested)",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-004",
+          "statement": "With the gateway stopped, an agent run is refused with a clear error and no agent code runs on the host",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-005",
+          "statement": "`jarvis doctor` reports OpenShell gateway and container runtime status",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-006",
+          "statement": "Pool sandboxes are drained when the host process shuts down; no orphaned sandboxes remain",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md"
+    },
+    {
+      "id": "F-031",
+      "title": "Sandboxed model calls go through the OpenShell gateway to OpenJarvis",
+      "description": "Configure the OpenShell inference gateway so sandboxed agents reach models only through it, with OpenJarvis's host /v1/chat/completions as the upstream, so engine selection and per-call telemetry are kept.",
+      "priority": "required",
+      "dependencies": [
+        "F-030"
+      ],
+      "status": "todo",
+      "design": {
+        "status": "agreed",
+        "risk": "escalated",
+        "summary": "Sandboxes have no direct route to Ollama or cloud providers and hold no API keys. The OpenShell gateway's inference upstream is the host OpenJarvis /v1/chat/completions, which selects the engine and records telemetry as today. That endpoint accepts calls only from the gateway.",
+        "open_questions": [],
+        "decision_refs": [
+          "D-033"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "A sandboxed agent's model calls appear in the OpenJarvis telemetry SQLite with tokens, latency and engine recorded",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-002",
+          "statement": "A sandboxed agent cannot reach Ollama or a cloud provider directly (network call blocked)",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-003",
+          "statement": "No API key is present in the sandbox environment or filesystem",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-004",
+          "statement": "The host inference endpoint used by the gateway rejects calls that do not come from the gateway",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md"
+    },
+    {
+      "id": "F-032",
+      "title": "Short-lived, minimum-permission connector credentials for sandboxed runs",
+      "description": "Connector tools run inside the sandbox using short-lived access tokens minted per run by the host, with minimum OAuth permissions per agent and exact-host network policies.",
+      "priority": "required",
+      "dependencies": [
+        "F-030"
+      ],
+      "status": "todo",
+      "design": {
+        "status": "agreed",
+        "risk": "escalated",
+        "summary": "For each run the host mints short-lived access tokens for only the connectors the agent's config names, with minimum OAuth permissions (e.g. read-only Gmail/Calendar for the digest), and uploads them at claim time. Refresh tokens never enter a sandbox. The agent's policy allows only the exact API hosts those connectors need. Misuse of a live token through an allowed host until expiry is an accepted trade-off.",
+        "open_questions": [
+          "How short can token lifetimes be for long deep-research runs?"
+        ],
+        "decision_refs": [
+          "D-034"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "No refresh token or long-lived credential is present inside a sandbox",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-002",
+          "statement": "An agent receives tokens only for the connectors named in its config",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-003",
+          "statement": "Tokens are scoped to the minimum OAuth permissions configured for that agent",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-004",
+          "statement": "The agent's policy blocks hosts not needed by its connectors",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md"
+    },
+    {
+      "id": "F-033",
+      "title": "Host-side work before and after each sandboxed run",
+      "description": "The host uploads a read-only snapshot of the memory and context a run needs, downloads results, traces and output files, writes them to SQLite, and does host-only work (text-to-speech playback, WhatsApp reading) after the run.",
+      "priority": "required",
+      "dependencies": [
+        "F-030"
+      ],
+      "status": "todo",
+      "design": {
+        "status": "agreed",
+        "risk": "escalated",
+        "summary": "Before a run, the host uploads a read-only snapshot of only the memory and context that run needs. After it, the result, traces and output files (e.g. digest audio) are downloaded and only the host writes to its SQLite databases. Text-to-speech playback and reading the WhatsApp Group Container happen on the host.",
+        "open_questions": [],
+        "decision_refs": [
+          "D-034",
+          "D-036"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "A sandboxed agent can read the memory snapshot it was given and cannot write to host SQLite",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-002",
+          "statement": "Results and traces from a sandboxed run are recorded in host SQLite by the host",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-003",
+          "statement": "The morning digest runs sandboxed end to end and its audio plays on the host",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-004",
+          "statement": "Output files written by the agent are downloaded to the host before the sandbox is deleted",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md"
     }
   ]
 }

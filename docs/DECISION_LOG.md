@@ -279,3 +279,93 @@ Entry format:
 - **Decision:** A profile-only chat that has sent at least one `UTILITY` template is pre-approved, and is still listed in `jarvis whatsapp review` so the developer can exclude it; other profile-only chats still need explicit approval.
 - **Supersedes:** the profile-only part of D-019, for chats that have sent `UTILITY` templates
 - **Recorded in:** feature_list.json F-025; docs/spikes/whatsapp/FINDINGS.md
+
+## D-029 — Every agent run goes into a disposable OpenShell sandbox; the host keeps the scheduler and server
+
+- **Date:** 2026-11-01
+- **Scope:** feature F-030
+- **Premise:** The developer wants to treat OpenJarvis agents as untrusted code, so a security issue or a risky command damages as little as possible. OpenShell (NVIDIA's policy-governed sandbox runtime, installed locally as 0.0.21) can run each agent in its own sandbox with network and filesystem rules. We could have sandboxed all of OpenJarvis, only risky tools, or each agent run. Sandboxing all of OpenJarvis would put every connector secret and the scheduler database inside one long-lived sandbox. The existing `SandboxedAgent` wrapper and `[sandbox] runtime` setting already give a place to plug in a new runtime.
+- **Decision:** Add OpenShell as a runtime behind `SandboxedAgent`; every agent run, including interactive chat, executes in an OpenShell sandbox, while the scheduler, `jarvis serve`, and the CLI stay on the host.
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-030; docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md
+
+## D-030 — Sandboxes come from a warm pool and are used once
+
+- **Date:** 2026-11-01
+- **Scope:** feature F-030
+- **Premise:** Creating an OpenShell sandbox goes through the gateway and the Podman virtual machine and is expected to take seconds. Since chat is sandboxed too, creating one per message would delay every reply. Keeping one sandbox per chat session would be faster, but it would let injected content build up across a conversation. A pool of sandboxes created ahead of time keeps each run clean without making the user wait.
+- **Decision:** The host process that runs agents keeps a pool of pre-created sandboxes (default two, configurable); each run claims one, the sandbox is deleted after that run, the pool refills in the background, and it is drained on shutdown.
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-030
+
+## D-031 — Pooled sandboxes start deny-all and get the agent's policy when claimed
+
+- **Date:** 2026-11-01
+- **Scope:** feature F-029, F-030
+- **Premise:** OpenShell sets a sandbox's policy and providers (its credential bundles) when it creates the sandbox. A pooled sandbox is created before anyone knows which agent will use it, which conflicts with giving each agent its own rules (D-035). OpenShell can change the policy of a live sandbox (`openshell policy set`). We do not yet know whether a provider can be attached after a sandbox is created.
+- **Decision:** Pooled sandboxes start with a deny-all policy and no providers; when an agent claims one, the host applies that agent's policy and uploads that run's short-lived tokens, and the spike (F-029) must confirm this works and that nothing can leave the network before the policy is applied.
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-029, F-030
+
+## D-032 — If OpenShell is unavailable, the run is refused
+
+- **Date:** 2026-11-01
+- **Scope:** feature F-030
+- **Premise:** The OpenShell gateway and the Podman virtual machine must be running for a sandboxed run to work, including the unattended 07:00 digest. Quietly running the agent on the host instead would undo the protection without anyone noticing. Starting the gateway automatically was also considered.
+- **Decision:** When the gateway or the container runtime is unavailable, the agent run is refused with a clear error and `jarvis doctor` reports why; there is never a fallback to running on the host.
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-030
+
+## D-033 — Model calls go through the OpenShell gateway, which forwards to OpenJarvis on the host
+
+- **Date:** 2026-11-01
+- **Scope:** feature F-031
+- **Premise:** A sandboxed agent cannot reach Ollama on the host by default. The developer chose OpenShell's inference gateway so the sandbox never holds API keys. OpenJarvis treats energy, tokens, latency, and dollar cost as first-class measurements, and records them per call in the engine layer. If the gateway called Ollama or a cloud provider directly, sandboxed runs (which is every run) would lose that telemetry and the local-versus-cloud engine choice. OpenJarvis already serves an OpenAI-compatible `/v1/chat/completions` endpoint.
+- **Decision:** Sandboxes reach models only through the OpenShell inference gateway, whose upstream is OpenJarvis's `/v1/chat/completions` on the host, so engine selection and telemetry stay where they are today; that endpoint must accept calls only from the gateway.
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-031
+
+## D-034 — Tools and connectors run inside the sandbox, with short-lived, minimum-permission tokens
+
+- **Date:** 2026-11-01
+- **Scope:** feature F-032, F-033
+- **Premise:** Many agents use connectors that need personal-data credentials (Gmail, Calendar). Keeping connectors on the host behind an allowlisted endpoint would keep credentials out of the sandbox, but it means building a host-side tool-call service. The developer preferred to run everything inside the sandbox. The risk we pointed out still applies: a prompt-injected agent holding a Gmail token can misuse it through a destination the policy has to allow, and the sandbox cannot tell the difference.
+- **Decision:** All tools run inside the sandbox; the host mints short-lived access tokens per run (refresh tokens never enter a sandbox), each agent gets minimum OAuth permissions and only the credentials its config names, its policy allows only the exact API hosts those connectors need, and text-to-speech playback and WhatsApp reading happen on the host after the run. Misuse of a live token through an allowed host, until it expires, is an accepted trade-off.
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-032, F-033
+
+## D-035 — Each agent's OpenShell policy is generated from OpenJarvis config
+
+- **Date:** 2026-11-01
+- **Scope:** feature F-030
+- **Premise:** Every agent needs its own network and credential rules. Hand-written OpenShell policy files per agent would spread security rules across loose files that tests cannot easily check. One global policy would give every agent the union of all permissions.
+- **Decision:** Generate each agent's policy YAML from `[sandbox.agents.<id>]` in OpenJarvis config (`allowed_hosts`, `providers`), applied on top of a built-in deny-all base.
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-030
+
+## D-036 — Memory goes in as a read-only snapshot; only the host writes SQLite
+
+- **Date:** 2026-11-01
+- **Scope:** feature F-033
+- **Premise:** Agent memory, traces, and telemetry live in SQLite on the host. A disposable sandbox loses anything written inside it. Letting the sandbox write memory back would let an untrusted agent corrupt long-lived state. Running agents with no memory would make them much less useful.
+- **Decision:** The host uploads a read-only snapshot of only the memory and context the run needs; the result, traces, and output files come back, and only the host writes to its SQLite databases.
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-033
+
+## D-037 — The OpenShell sandbox image is built from the existing sandbox Dockerfile
+
+- **Date:** 2026-11-01
+- **Scope:** feature F-030
+- **Premise:** `deploy/docker/Dockerfile.sandbox` already defines the image used by the Docker sandbox. `openshell sandbox create --from <path>` can build an image from a Dockerfile. Publishing to a registry or installing OpenJarvis when the sandbox starts would add release work or startup time.
+- **Decision:** OpenShell sandboxes are built from `deploy/docker/Dockerfile.sandbox` through `--from`, so there is one image definition for both runtimes.
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-030
+
+## D-038 — OpenShell sandboxing ships as a spike plus four features
+
+- **Date:** 2026-11-01
+- **Scope:** feature F-029 – F-033
+- **Premise:** The design relies on OpenShell 0.0.21 behaving in specific ways on macOS with Podman: how long creating a sandbox takes, applying a policy to a live sandbox, attaching providers after creation, and pointing the gateway's inference upstream at OpenJarvis. If any of these is wrong, the design changes. The work also covers several separable concerns.
+- **Decision:** Run a spike first (F-029), then build the OpenShell runner and pool (F-030), model access through the gateway (F-031), connector credentials (F-032), and the host-side work before and after each run (F-033).
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-029 – F-033
