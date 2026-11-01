@@ -160,6 +160,55 @@ policy to a pooled sandbox before it is claimed. Generated policies must
 list resolved executables (e.g. `/sandbox/.uv/python/**`), and `openshell
 logs` denials should be surfaced in OpenJarvis's audit log.
 ## Q4. Can a provider be attached after a sandbox is created?
+
+**Verdict: REFUTED, but providers turn out to be much stronger than uploaded
+tokens.** There is no command to attach a provider to a running sandbox
+(`openshell sandbox --help`: create/get/list/delete/connect/upload/download/
+ssh-config; `openshell settings` holds only key/value settings). And a
+provider's credential is **fixed at sandbox creation**: after
+`openshell provider update oj-spike-dummy --credential SPIKE_TOKEN=spike-dummy-token-ROTATED`,
+the running `oj-spike-subst` still sent the old value (checked for over 30 s),
+while a sandbox created afterwards sent `...-ROTATED`.
+
+**Credentials never enter the sandbox.** With `--provider oj-spike-dummy`
+(a `generic` provider holding `SPIKE_TOKEN`), the sandbox sees only a
+placeholder, and no file contains the value:
+
+```
+SPIKE_TOKEN=openshell:resolve:env:SPIKE_TOKEN
+HTTPS_PROXY=http://10.200.0.1:3128   (all egress goes through the OpenShell proxy)
+```
+
+The proxy swaps the placeholder for the real value on the way out, for
+endpoints with `tls: terminate` (`policies/allow_echo.yaml`, httpbin.org):
+
+```
+in-sandbox value: openshell:resolve:env:SPIKE_TOKEN
+curl -H "Authorization: Bearer $SPIKE_TOKEN" -H "X-Spike: $SPIKE_TOKEN" https://httpbin.org/headers
+  "Authorization": "Bearer spike-dummy-token-not-a-secret"
+  "X-Spike": "spike-dummy-token-not-a-secret"
+curl -X POST -d "{\"body_field\": \"$SPIKE_TOKEN\"}" "https://httpbin.org/post?q=$SPIKE_TOKEN"
+  "q": "spike-dummy-token-not-a-secret"                 (URL query: substituted)
+  "body_field": "openshell:resolve:env:SPIKE_TOKEN"     (body: NOT substituted)
+```
+
+Substitution happens in **every header and in the URL query**, not in
+request bodies. An injected agent cannot read the token, but it could leak
+it to an allowed host that echoes or stores headers or URLs it receives.
+
+Fallback, uploaded token file: `openshell sandbox upload oj-spike-pool1 <token> /sandbox/.oj`
+works, and `chmod 600` applies, but the file is owned by `sandbox`, the same
+user the agent runs as (`uid=998(sandbox)`), so the agent can read the token
+in plain text.
+
+Implication for F-032 / D-034: use OpenShell providers, not uploaded files.
+That is stronger than the agreed design (the agent never holds the token).
+Because credentials are fixed at creation, a pooled sandbox carries the
+token minted when it was created: either the pool is per agent (created with
+that agent's providers and refilled before tokens expire), or sandboxes for
+agents with credentials are created at claim time. Allowed hosts for
+credentialed agents must not reflect headers or URLs (no httpbin-like
+endpoints, no user-controlled redirects).
 ## Q5. Can the inference gateway forward to OpenJarvis `/v1`, and can that endpoint be limited to the gateway?
 ## Q6. How does the host run a command in an existing sandbox and read clean output?
 
