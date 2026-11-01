@@ -57,6 +57,64 @@ report whether the sandbox image is present in the cluster. A slim
 OpenJarvis image matters: every megabyte is paid on first pull.
 
 ## Q1. How long does creating a sandbox take?
+
+**Verdict: CONFIRMED for a cached image (about 2 s); UNKNOWN for the
+OpenJarvis image, which cannot be built by OpenShell as-is.**
+
+Cached `base` image, deny-all policy (`time_create.py base 5
+policies/deny_all.yaml`; changed from the plan to time create, first SSH
+and delete separately):
+
+```
+  run 0: create   2.7s  first-ssh   0.0s  delete   0.0s
+  run 1: create   2.0s  first-ssh   0.0s  delete   0.0s
+  run 2: create   2.0s  first-ssh   0.0s  delete   0.0s
+  run 3: create   1.9s  first-ssh   0.0s  delete   0.0s
+  run 4: create   2.0s  first-ssh   0.0s  delete   0.0s
+create     median   2.0s  min   1.9s  max   2.7s
+```
+
+"create" covers until the sandbox ran `true` and is `Ready`. The cold cost
+is the image: 29 min 20 s for the first pull of the 1.13 GB `base` image
+(Finding B2), and 145 s for the very first sandbox on a fresh gateway.
+
+Pool-size implication: refilling a pooled sandbox takes about 2 s once the
+image is cached. With a pool of two, back-to-back chat messages would wait
+only if they arrive faster than one per second, so **two is enough**. Pod
+termination (~35 s, Q7) and the policy apply (2–10 s, Q3) matter more than
+creation.
+
+### Finding B3: OpenShell cannot build `deploy/docker/Dockerfile.sandbox` as-is
+
+`openshell sandbox create --from deploy/docker/Dockerfile.sandbox` uses the
+**Dockerfile's directory** (`deploy/docker/`) as the build context, so the
+build fails at `COPY pyproject.toml uv.lock README.md ./`
+(`copier: stat: "/pyproject.toml": no such file or directory`). The
+repository has no `.dockerignore`, so using the repo root as the context
+would send `.venv`, `node_modules` and `rust/target` into the build. The
+first attempt spent about 12 min on apt packages and the Rust toolchain
+before reaching that step.
+
+### Finding B4: any image works only if it has a `sandbox` user and group
+
+OpenShell injects its own supervisor (`/opt/openshell/bin/openshell-sandbox`
+is the pod command) into any image, but a plain
+`docker.io/library/python:3.12-slim` crash-loops:
+
+```
+sandbox user 'sandbox' not found in image; all sandbox images must include a 'sandbox' user and group
+```
+
+`openshell sandbox list` keeps reporting such a sandbox as `Provisioning`
+while its pod restarts (5 restarts in 3.5 min), so OpenShell does not
+surface the error itself.
+
+Implication for F-030 / D-037: the OpenJarvis sandbox image needs its own
+OpenShell variant: a `sandbox` user and group, a `/sandbox` work directory,
+a build context OpenShell can use (a dedicated directory, or a pre-built
+image pushed to a registry the cluster can pull from), and a
+`.dockerignore`. The runner needs its own creation timeout and should read
+pod status or `openshell logs` to report why a sandbox never became ready.
 ## Q2. Can a pooled deny-all sandbox reach the network before its policy is applied?
 
 **Verdict: CONFIRMED that it cannot.** A sandbox created with
