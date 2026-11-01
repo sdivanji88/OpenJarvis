@@ -23,6 +23,10 @@ class OpenShellError(RuntimeError):
     """An OpenShell operation failed; the run must not fall back to the host."""
 
 
+class SandboxTimeout(OpenShellError):
+    """An OpenShell or SSH command exceeded its timeout."""
+
+
 class OpenShellCLI:
     def __init__(
         self,
@@ -119,7 +123,7 @@ class OpenShellCLI:
                 argv, input=input, capture_output=True, text=True, timeout=timeout
             )
         except subprocess.TimeoutExpired as exc:
-            raise OpenShellError(f"{' '.join(argv[:3])} timed out") from exc
+            raise SandboxTimeout(f"{' '.join(argv[:3])} timed out") from exc
         except FileNotFoundError as exc:
             raise OpenShellError(f"{argv[0]} not found on PATH") from exc
 
@@ -133,4 +137,4 @@ class OpenShellCLI:
         return path
 
 
-__all__ = ["OpenShellCLI", "OpenShellError"]
+__all__ = ["OpenShellCLI", "OpenShellError", "SandboxTimeout"]

@@ -9,7 +9,11 @@ from typing import Callable, Dict, List
 
 import pytest
 
-from openjarvis.sandbox.openshell_cli import OpenShellCLI, OpenShellError
+from openjarvis.sandbox.openshell_cli import (
+    OpenShellCLI,
+    OpenShellError,
+    SandboxTimeout,
+)
 
 SSH_CONFIG = "Host openshell-{name}\n  ProxyCommand openshell ssh-proxy {name}\n"
 
@@ -113,7 +117,7 @@ class TestExec:
             raise subprocess.TimeoutExpired(argv, 5)
 
         run.handlers["ssh"] = hang
-        with pytest.raises(OpenShellError, match="timed out"):
+        with pytest.raises(SandboxTimeout, match="timed out"):
             cli.exec("oj-chat-1", "true", input="", timeout=5)
 
 

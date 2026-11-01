@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import threading
+import time
 from typing import Dict, List
 
 import pytest
@@ -58,6 +60,7 @@ class TestClaim:
     def test_claim_refills_to_the_agent_pool_size(self, pool, shell):
         pool.set_size("chat", POLICY_A, 1)
         claimed = pool.claim("chat", POLICY_A)
+        pool.wait_for_refills()
         others = [n for n in shell.sandboxes if n != claimed.name]
         assert len(others) == 1
 
@@ -74,6 +77,29 @@ class TestClaim:
     def test_agent_ids_are_made_safe_for_sandbox_names(self, pool):
         name = pool.claim("Morning_Digest", POLICY_A).name
         assert name.startswith("oj-morning-digest-")
+
+
+class TestBackgroundRefill:
+    def test_claim_does_not_wait_for_the_refill(self):
+        shell = FakeOpenShell()
+        pool = SandboxPool(shell, image_id="sha256:aaa")
+        pool.set_size("chat", POLICY_A, 1)
+
+        gate = threading.Event()
+        original = shell.create
+
+        def slow_create(name, policy):
+            gate.wait(5)
+            original(name, policy)
+
+        shell.create = slow_create
+        started = time.monotonic()
+        pool.claim("chat", POLICY_A)
+        elapsed = time.monotonic() - started
+        gate.set()
+        pool.wait_for_refills()
+        assert elapsed < 1
+        assert len(shell.sandboxes) == 2
 
 
 class TestRelease:
