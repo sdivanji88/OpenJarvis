@@ -2,11 +2,32 @@
 
 > Read this at the start of every session. Update it before ending every session.
 
-**Last updated:** 2026-11-01T13:45:00Z
+**Last updated:** 2026-11-01T14:15:00Z
 
 ---
 
-## Latest session (2026-11-01): OpenShell agent sandboxing — design agreed, spike F-029 run
+## Latest session (2026-11-01, later): F-030 started test-first; F-029 verified
+
+- **F-029 is `verified`** (developer sign-off on FINDINGS).
+- **F-030 is `in_progress`** on branch `openshell-sandbox`, in [PR #1](https://github.com/sdivanji88/OpenJarvis/pull/1). The PR is on the fork with base `morning-digest`; change the base to `main` once `morning-digest` merges.
+  - Done:
+    - `sandbox/openshell_policy.py` (deny-all policy plus allowed hosts).
+    - `sandbox/openshell_pool.py` (keyed, single-use, background refill).
+    - `sandbox/openshell_cli.py` (create, SSH exec, delete, list, gateway check).
+    - `sandbox/openshell_runner.py` (fails closed; `shared_runner()` per process).
+    - `[sandbox.allowed_hosts]` and `[sandbox.pool_sizes]` config.
+    - `agents/factory.py` `build_agent()` used at all 11 construction sites, with a guard test (D-044).
+    - `SystemBuilder` hands the shared runner to `JarvisSystem`.
+  - D-045: with `runtime = "openshell"`, runs fail closed until the in-sandbox entrypoint and F-031 land.
+  - Left in F-030:
+    - The in-sandbox entrypoint (`openjarvis.sandbox.entrypoint` does not exist; `Dockerfile.sandbox` references it).
+    - The slim, digest-pinned image with its own build context.
+    - `jarvis doctor` checks.
+    - Dedicated Podman machine guidance.
+    - The Definition of Done gates and acceptance-criteria evidence.
+- Full unit suite: 9222 passed. 3 failed in `tests/security/test_data_boundary_audit.py`; they fail the same way without this branch's changes.
+
+## Earlier session (2026-11-01): OpenShell agent sandboxing — design agreed, spike F-029 run
 
 - **Design agreed (D-029 to D-038), features F-029 to F-033 added.** Every agent run executes in a disposable OpenShell sandbox from a warm pool. Model calls go through the OpenShell inference gateway to OpenJarvis `/v1`, and the run fails closed when OpenShell is unavailable. Spec and plan are local only (gitignored): `docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md`, `docs/superpowers/plans/2026-11-01-openshell-spike-f029.md`.
 - **Spike F-029 is `verifying`.** Findings are in `docs/spikes/openshell/FINDINGS.md`.
@@ -28,7 +49,7 @@
 
 ### Next step — start here
 
-Plan F-030 (OpenShell runner, keyed pool, image build step, dedicated Podman machine, doctor checks) with the writing-plans skill, then dispatch the orchestrator. Mark F-029 `verified` after the user reviews FINDINGS.
+Continue F-030 test-first. Next: the in-sandbox entrypoint and the slim image, then the `jarvis doctor` checks and the dedicated Podman machine guidance.
 
 ---
 

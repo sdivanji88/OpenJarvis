@@ -215,3 +215,28 @@ Both are folded into F-025's summary and its criteria AC-002 and AC-004.
 **Gates**: `scripts/validate-harness.sh` passes. Only docs and trackers changed.
 
 **Next session**: plan F-030.
+
+### Session 9 -- 2026-11-01T14:15:00Z (F-030 test-first; F-029 verified; PR #1)
+
+**What was done**:
+- Built the first part of F-030 test-first (red-green-refactor):
+  - The policy generator.
+  - The keyed pool, with background refill. Live testing showed the synchronous refill made warm claims take 2 s; they now take 0.05 s.
+  - The OpenShell command-line wrapper.
+  - The runner, which fails closed, and `shared_runner()`.
+  - The sandbox config fields.
+  - `agents/factory.py` `build_agent()` at all 11 agent construction sites, with a guard test.
+  - `SystemBuilder` wiring.
+- Found that the existing `ContainerRunner` was built but never used, so `[sandbox] enabled` had no effect. The developer chose a single factory (D-044) and wiring it in now, failing closed until F-031 (D-045).
+- Live checks against the OpenShell gateway:
+  - The adapter and runner work end to end, and no `oj-` sandboxes are left behind.
+  - An agent built by the factory under `runtime = "openshell"` ran in a sandbox and returned the expected missing-entrypoint error.
+- Opened [PR #1](https://github.com/sdivanji88/OpenJarvis/pull/1) on the fork, with base `morning-digest`.
+- Moved F-029 to `verified` on developer sign-off.
+
+**Gates**:
+- Full unit suite: 9222 passed. 3 failed in `test_data_boundary_audit.py`; they fail the same way without this branch's changes.
+- `scripts/validate-harness.sh` passes.
+- The other Definition of Done gates have not been run yet. F-030 is not complete.
+
+**Next session**: F-030 in-sandbox entrypoint and slim image, then doctor checks.

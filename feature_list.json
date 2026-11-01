@@ -1394,7 +1394,7 @@
       "description": "Time-boxed spike that confirms the OpenShell behaviour the sandbox design relies on, before building it. Findings go in docs/spikes/openshell/FINDINGS.md.",
       "priority": "required",
       "dependencies": [],
-      "status": "verifying",
+      "status": "verified",
       "design": {
         "status": "agreed",
         "risk": "escalated",
@@ -1488,9 +1488,9 @@
           "openshell sandbox create --name oj-spike-deny --from base --policy docs/spikes/openshell/policies/deny_all.yaml --upload docs/spikes/openshell/net_probe.sh:/sandbox -- sh /sandbox/net_probe.sh https://example.com https://pypi.org http://host.containers.internal:11434/api/tags"
         ],
         "manual_checks": [
-          "Findings and implications reviewed in docs/spikes/openshell/FINDINGS.md"
+          "Findings and implications reviewed in docs/spikes/openshell/FINDINGS.md (developer sign-off 2026-11-01)"
         ],
-        "last_verified_at": null
+        "last_verified_at": "2026-11-01T19:45:00+05:30"
       },
       "blocker": null,
       "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md Spike run 2026-11-01; D-031, D-034 and D-037 need revisiting (see FINDINGS 'Implications')."
