@@ -325,4 +325,34 @@ Implication for F-030: drive pooled sandboxes over SSH, not through
 `sandbox create -- <cmd>`, whose stdout mixes in OpenShell's progress lines.
 Keep the sentinel markers anyway as a guard.
 ## Q7. How are spike / orphaned sandboxes identified and removed?
+
+**Verdict: CONFIRMED, by name prefix only.** `openshell sandbox list` has
+`--names` / `--ids` (one per line) but no labels, filters or JSON output, so
+the name prefix is the only handle. This worked:
+
+```
+openshell sandbox list --names | grep '^oj-spike-' | xargs -n1 openshell sandbox delete
+✓ Deleted sandbox oj-spike-pool1   (… six sandboxes)
+```
+
+Deletion is asynchronous. The sandboxes disappear from `sandbox list` at
+once, but their Kubernetes pods stay `Terminating` for about **35 s** (the
+default 30 s grace period). That is also why the `--no-keep` one-shot in Q6
+took 34 s in total. `time_create.py` measured `sandbox delete` returning in
+under 0.1 s.
+
+Leftovers that `sandbox delete` does not cover:
+
+- Providers (`openshell provider delete <name>`).
+- The gateway-wide inference route: after `provider delete oj-spike-jarvis`,
+  `openshell inference get` still shows `Provider: oj-spike-jarvis`, and
+  there is no `inference delete` command. It has to be overwritten with
+  `inference set`.
+
+Implication for F-030: name every OpenJarvis sandbox with a fixed prefix
+(e.g. `oj-<agent>-<id>`) and clean up by prefix at startup. Never put the
+30 s pod termination on the request path: release returns immediately, and
+the pool counts terminating pods against the Podman VM's capacity (4 CPUs,
+8 GiB here). The host must own the inference route and reset it with
+`inference set` at startup.
 ## Implications for F-030 – F-033
