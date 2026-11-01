@@ -369,3 +369,48 @@ Entry format:
 - **Decision:** Run a spike first (F-029), then build the OpenShell runner and pool (F-030), model access through the gateway (F-031), connector credentials (F-032), and the host-side work before and after each run (F-033).
 - **Supersedes:** none
 - **Recorded in:** feature_list.json F-029 – F-033
+
+## D-039 — Personal-data connectors run on the host; sandboxes hold no real credentials
+
+- **Date:** 2026-11-01
+- **Scope:** feature F-032
+- **Premise:** D-034 put all tools, including Gmail and Calendar connectors, inside the sandbox with scoped short-lived tokens. The spike (F-029) found that OpenShell substitutes an attached provider's real credential into headers and URL queries sent to *every* allowed host, not only that provider's service, and that this cannot be switched off per host. The security review added that Google APIs echo invalid query values in error messages, so an injected agent could end up holding the token in plain text. A digest sandbox that allows Gmail and news sites would hand a live Gmail token to any of those sites.
+- **Decision:** Personal-data connectors run on the host behind a narrow tool endpoint; each run gets a short-lived, run-scoped key that only allows that agent's allowlisted tool calls, and every call is audited; sandboxes never hold a real credential and OpenShell providers are not used for personal data.
+- **Supersedes:** D-034
+- **Recorded in:** feature_list.json F-032; docs/spikes/openshell/FINDINGS.md (Q4, F1)
+
+## D-040 — One pool keyed by agent policy and image; pool size per agent
+
+- **Date:** 2026-11-01
+- **Scope:** feature F-030
+- **Premise:** D-031 applied each agent's policy to a generic deny-all sandbox when claimed. The spike measured 2–10 s for each live policy change, which would land on every run, chat included. Creating a sandbox with its policy takes about 2 s once the image is cached. With credentials moved to the host (D-039), pooled sandboxes no longer hold tokens while idle. The architect review noted that separate pools per agent type would not fit the 4-CPU, 8 GiB Podman VM if every agent kept a sandbox warm.
+- **Decision:** A single pool keyed by the agent's generated policy and the image version; each agent has a pool size (1 for interactive agents such as chat, 0 meaning create on demand for scheduled agents); sandboxes are created with their agent's policy, the host checks the policy version before handing one out, a config change yields a new key, and each sandbox is still used once.
+- **Supersedes:** D-031, and the fixed "default two" pool size in D-030
+- **Recorded in:** feature_list.json F-030
+
+## D-041 — A slim, dedicated OpenShell image built outside the request path
+
+- **Date:** 2026-11-01
+- **Scope:** feature F-030
+- **Premise:** D-037 reused `deploy/docker/Dockerfile.sandbox` through `openshell sandbox create --from`. The spike found OpenShell uses the Dockerfile's own directory as the build context (that Dockerfile needs the repository root, and the repo has no `.dockerignore`), and that every image must contain a `sandbox` user and group. The community `base` image ships Python 3.14, which OpenJarvis does not support, and is 1.13 GB; its first pull took 29 minutes. The security review asked for a digest-pinned base and a minimal build context so no secrets are baked in.
+- **Decision:** A new slim OpenShell image (`python:3.12-slim` pinned by digest, a `sandbox` user, `/sandbox` work directory, OpenJarvis installed from `uv.lock` with hashes) built from its own small build directory with a `.dockerignore`, in a separate build step that `jarvis doctor` reports on; a local registry is the fallback if OpenShell rebuilds on every create.
+- **Supersedes:** D-037
+- **Recorded in:** feature_list.json F-030; docs/spikes/openshell/FINDINGS.md (B3, B4)
+
+## D-042 — OpenShell runs in a dedicated Podman machine with no macOS folders mounted
+
+- **Date:** 2026-11-01
+- **Scope:** feature F-030
+- **Premise:** The OpenShell gateway only starts on a rootful Podman machine. The developer's existing machine mounts macOS `/Users` read-write into the VM, as Podman does by default. A sandbox escape to root in the VM would then reach `~/.openjarvis` and the rest of the home directory.
+- **Decision:** OpenShell gets its own rootful Podman machine with no host folders mounted; `jarvis doctor` checks for it.
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-030; docs/spikes/openshell/FINDINGS.md (B1, F4)
+
+## D-043 — The gateway uses a separate key on a pass-through model endpoint
+
+- **Date:** 2026-11-01
+- **Scope:** feature F-031
+- **Premise:** D-033 routes sandboxed model calls through the OpenShell gateway to OpenJarvis `/v1`. The spike showed the agent-wrapped `/v1/chat/completions` turned a one-line question into 13,351 prompt tokens, that the gateway forces one model for every sandbox, and that `inference.local` stays reachable even under a deny-all policy. The security review pointed out that giving the gateway the full `OPENJARVIS_API_KEY` exposes the whole API to any process or container holding it, and that an injected agent could push personal data to a cloud engine if the request could choose the engine.
+- **Decision:** The gateway gets its own key that only works on a new pass-through model endpoint; the host fixes the engine and model regardless of the request and enforces a per-run budget.
+- **Supersedes:** none (refines D-033)
+- **Recorded in:** feature_list.json F-031

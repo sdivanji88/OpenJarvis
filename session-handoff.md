@@ -18,9 +18,17 @@
   - The 1.13 GB `base` image is cached in the cluster.
   - The gateway's inference route still names the deleted provider `oj-spike-jarvis`. Overwrite it with `openshell inference set` before relying on it.
 
+- **Design revised after the spike (D-039 to D-043), agreed.** Follow-up checks showed that provider credentials are substituted on every allowed host (FINDINGS F1), and that the Podman VM mounts `/Users` (F4).
+  - D-039: connectors run on the host, and sandboxes hold no credentials.
+  - D-040: one pool keyed by policy and image, sized per agent.
+  - D-041: a slim, dedicated OpenShell image.
+  - D-042: a dedicated Podman machine with no host mounts.
+  - D-043: a separate gateway key on a pass-through model endpoint.
+  F-030, F-031 and F-032 were updated (F-032 is now the host-side connector endpoint).
+
 ### Next step — start here
 
-Run design-consensus on the three decisions the spike invalidated: D-031 (apply policy and tokens at claim time), D-034 (uploaded tokens; use OpenShell providers instead) and D-037 (image from `Dockerfile.sandbox`). See FINDINGS "Implications". Then plan F-030 from the findings. Mark F-029 `verified` after review.
+Plan F-030 (OpenShell runner, keyed pool, image build step, dedicated Podman machine, doctor checks) with the writing-plans skill, then dispatch the orchestrator. Mark F-029 `verified` after the user reviews FINDINGS.
 
 ---
 

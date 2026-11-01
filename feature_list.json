@@ -1498,7 +1498,7 @@
     {
       "id": "F-030",
       "title": "OpenShell runtime for SandboxedAgent with a warm pool",
-      "description": "Add OpenShell as a runtime behind SandboxedAgent so every agent run executes in a single-use sandbox drawn from a warm pool, with per-agent policies generated from config and fail-closed behaviour.",
+      "description": "Add OpenShell as a runtime behind SandboxedAgent so every agent run executes in a single-use sandbox from a pool keyed by agent policy and image, built from a slim dedicated image, inside a dedicated Podman machine, failing closed.",
       "priority": "required",
       "dependencies": [
         "F-029"
@@ -1507,17 +1507,22 @@
       "design": {
         "status": "agreed",
         "risk": "escalated",
-        "summary": "New OpenShell runner selected by [sandbox] runtime = \"openshell\". A host-owned warm pool (default 2, configurable) of deny-all sandboxes built from deploy/docker/Dockerfile.sandbox via --from; each run claims one, gets its agent policy applied with `openshell policy set`, and the sandbox is deleted after the run; the pool refills in the background and drains on shutdown. Per-agent policy YAML is generated from [sandbox.agents.<id>] (allowed_hosts, providers) on a built-in deny-all base. If the gateway or container runtime is unavailable, the run is refused and `jarvis doctor` reports it; there is never a host fallback.",
+        "summary": "New OpenShell runner selected by [sandbox] runtime = \"openshell\". One pool keyed by (generated agent policy, image digest) with a per-agent pool size (1 for interactive agents such as chat, 0 = create on demand); sandboxes are created with their agent's binary-scoped policy (resolved executables, e.g. /sandbox/.uv/python/**) on a deny-all base, driven over SSH (openshell sandbox ssh-config), used once and deleted; the host checks the policy version before use, cleans up by name prefix at startup, and counts ~35 s pod termination against VM capacity. Slim digest-pinned python:3.12-slim image with a sandbox user, built from its own context with a .dockerignore in a separate build step. Dedicated rootful Podman machine with no macOS folders mounted. Fails closed with jarvis doctor checks (rootful dedicated VM, gateway, image present, creation timeout).",
         "open_questions": [
-          "Does chat feel fast enough with a pool of two?"
+          "Does OpenShell cache images built with --from <Dockerfile>, or rebuild on every create?",
+          "Does the sandbox need the openjarvis_rust extension (Linux build stage)?",
+          "Filesystem policy behaviour (untested in the spike)",
+          "Per-sandbox CPU / memory limits"
         ],
         "decision_refs": [
           "D-029",
           "D-030",
-          "D-031",
           "D-032",
           "D-035",
-          "D-037"
+          "D-036",
+          "D-040",
+          "D-041",
+          "D-042"
         ]
       },
       "acceptance_criteria": [
@@ -1529,31 +1534,43 @@
         },
         {
           "id": "AC-002",
-          "statement": "Each sandbox is used for exactly one run and is deleted afterwards; the pool refills to its configured size",
+          "statement": "Sandboxes are drawn from a pool keyed by agent policy and image digest; an agent with pool size 1 gets a pre-created sandbox, pool size 0 creates on demand",
           "status": "pending",
           "evidence": []
         },
         {
           "id": "AC-003",
-          "statement": "The generated policy for an agent allows only that agent's configured hosts on top of the deny-all base (unit-tested)",
+          "statement": "Each sandbox is used for exactly one run and deleted afterwards; changing an agent's policy config never hands out a sandbox with the old policy",
           "status": "pending",
           "evidence": []
         },
         {
           "id": "AC-004",
-          "statement": "With the gateway stopped, an agent run is refused with a clear error and no agent code runs on the host",
+          "statement": "The generated policy for an agent allows only that agent's configured hosts and binaries on top of the deny-all base (unit-tested)",
           "status": "pending",
           "evidence": []
         },
         {
           "id": "AC-005",
-          "statement": "`jarvis doctor` reports OpenShell gateway and container runtime status",
+          "statement": "The OpenShell image is built from its own context in a separate step, runs as the sandbox user, and its base image is pinned by digest",
           "status": "pending",
           "evidence": []
         },
         {
           "id": "AC-006",
-          "statement": "Pool sandboxes are drained when the host process shuts down; no orphaned sandboxes remain",
+          "statement": "With the gateway stopped, the Podman machine not rootful, or the image missing, an agent run is refused with a clear error and no agent code runs on the host",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-007",
+          "statement": "`jarvis doctor` reports the dedicated Podman machine (rootful, no host folders mounted), gateway status, and whether the sandbox image is present",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-008",
+          "statement": "No sandboxes with the OpenJarvis name prefix remain after the host process shuts down or restarts",
           "status": "pending",
           "evidence": []
         }
@@ -1569,7 +1586,7 @@
     {
       "id": "F-031",
       "title": "Sandboxed model calls go through the OpenShell gateway to OpenJarvis",
-      "description": "Configure the OpenShell inference gateway so sandboxed agents reach models only through it, with OpenJarvis's host /v1/chat/completions as the upstream, so engine selection and per-call telemetry are kept.",
+      "description": "Sandboxed agents reach models only through the OpenShell inference gateway, whose upstream is a new pass-through model endpoint on the OpenJarvis host with its own key; the host fixes engine and model and enforces a per-run budget, and telemetry is kept and tagged with the agent.",
       "priority": "required",
       "dependencies": [
         "F-030"
@@ -1578,34 +1595,49 @@
       "design": {
         "status": "agreed",
         "risk": "escalated",
-        "summary": "Sandboxes have no direct route to Ollama or cloud providers and hold no API keys. The OpenShell gateway's inference upstream is the host OpenJarvis /v1/chat/completions, which selects the engine and records telemetry as today. That endpoint accepts calls only from the gateway.",
-        "open_questions": [],
+        "summary": "Sandboxes call https://inference.local (handled by the OpenShell proxy) and hold no API keys. The gateway's provider points at a new host pass-through endpoint (no agent wrapping) via http://host.openshell.internal:<port>/v1 with a key that only works on that endpoint. The host chooses engine and model regardless of the request and enforces a per-run budget; telemetry rows record the agent that made the call. The host resets the gateway inference route at startup (there is no inference delete).",
+        "open_questions": [
+          "How the agent identity reaches the host endpoint for telemetry tagging and budgets"
+        ],
         "decision_refs": [
-          "D-033"
+          "D-033",
+          "D-043"
         ]
       },
       "acceptance_criteria": [
         {
           "id": "AC-001",
-          "statement": "A sandboxed agent's model calls appear in the OpenJarvis telemetry SQLite with tokens, latency and engine recorded",
+          "statement": "A sandboxed agent's model calls appear in the OpenJarvis telemetry SQLite with tokens, latency, engine and the agent recorded",
           "status": "pending",
           "evidence": []
         },
         {
           "id": "AC-002",
-          "statement": "A sandboxed agent cannot reach Ollama or a cloud provider directly (network call blocked)",
+          "statement": "The pass-through endpoint adds no agent system prompt or tools (prompt tokens match the request)",
           "status": "pending",
           "evidence": []
         },
         {
           "id": "AC-003",
-          "statement": "No API key is present in the sandbox environment or filesystem",
+          "statement": "The gateway's key is rejected by every other OpenJarvis endpoint, and OPENJARVIS_API_KEY is not given to the gateway",
           "status": "pending",
           "evidence": []
         },
         {
           "id": "AC-004",
-          "statement": "The host inference endpoint used by the gateway rejects calls that do not come from the gateway",
+          "statement": "A request asking for a different model or engine is served by the host-chosen engine and model",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-005",
+          "statement": "A run that exceeds its budget is refused further model calls",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-006",
+          "statement": "No API key is present in the sandbox environment or filesystem, and the sandbox cannot reach Ollama or the host endpoint directly",
           "status": "pending",
           "evidence": []
         }
@@ -1620,8 +1652,8 @@
     },
     {
       "id": "F-032",
-      "title": "Short-lived, minimum-permission connector credentials for sandboxed runs",
-      "description": "Connector tools run inside the sandbox using short-lived access tokens minted per run by the host, with minimum OAuth permissions per agent and exact-host network policies.",
+      "title": "Host-side connector endpoint with run-scoped keys for sandboxed agents",
+      "description": "Personal-data connectors (Gmail, Calendar, ...) run on the host behind a narrow tool endpoint; sandboxed agents call it with a short-lived, run-scoped key that only allows that agent's allowlisted tool calls; every call is audited; sandboxes never hold a real credential.",
       "priority": "required",
       "dependencies": [
         "F-030"
@@ -1630,36 +1662,43 @@
       "design": {
         "status": "agreed",
         "risk": "escalated",
-        "summary": "For each run the host mints short-lived access tokens for only the connectors the agent's config names, with minimum OAuth permissions (e.g. read-only Gmail/Calendar for the digest), and uploads them at claim time. Refresh tokens never enter a sandbox. The agent's policy allows only the exact API hosts those connectors need. Misuse of a live token through an allowed host until expiry is an accepted trade-off.",
+        "summary": "A host tool endpoint reachable from sandboxes (planned: http://host.openshell.internal:<port> plus one policy rule). For each run the host issues a run-scoped key, uploaded into the sandbox at claim, valid only for that run and that agent's allowlisted connector tools, revoked when the run ends. Calls are checked against the allowlist and written to the audit log. Connector credentials (refresh and access tokens) stay on the host; OpenShell providers are not used for personal data.",
         "open_questions": [
-          "How short can token lifetimes be for long deep-research runs?"
+          "Exact transport and port for the host tool endpoint and how it is restricted to sandboxes",
+          "Shape of tool results returned to the sandbox (size limits, redaction)"
         ],
         "decision_refs": [
-          "D-034"
+          "D-039"
         ]
       },
       "acceptance_criteria": [
         {
           "id": "AC-001",
-          "statement": "No refresh token or long-lived credential is present inside a sandbox",
+          "statement": "No connector credential (access or refresh token) is present inside a sandbox, in its environment, files, or attached OpenShell providers",
           "status": "pending",
           "evidence": []
         },
         {
           "id": "AC-002",
-          "statement": "An agent receives tokens only for the connectors named in its config",
+          "statement": "A sandboxed agent can call only the connector tools on its allowlist; other tools are refused and logged",
           "status": "pending",
           "evidence": []
         },
         {
           "id": "AC-003",
-          "statement": "Tokens are scoped to the minimum OAuth permissions configured for that agent",
+          "statement": "A run-scoped key stops working when its run ends and is rejected for any other agent's tools",
           "status": "pending",
           "evidence": []
         },
         {
           "id": "AC-004",
-          "statement": "The agent's policy blocks hosts not needed by its connectors",
+          "statement": "Every connector call from a sandbox is recorded in the audit log with agent, tool and outcome",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-005",
+          "statement": "The morning digest runs sandboxed and gets its Gmail and Calendar data through the host endpoint",
           "status": "pending",
           "evidence": []
         }

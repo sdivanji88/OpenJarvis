@@ -194,3 +194,24 @@ Both are folded into F-025's summary and its criteria AC-002 and AC-004.
 **Gates**: `scripts/validate-harness.sh` passes. Only docs, trackers and spike scripts changed.
 
 **Next session**: design-consensus to revisit D-031, D-034 and D-037; then plan F-030.
+
+### Session 8b -- 2026-11-01T14:30:00Z (design-consensus: revise D-031, D-034, D-037 after spike)
+
+**What was done**:
+- Ran architect and security-reviewer design reviews of the spike findings.
+- Ran follow-up checks:
+  - Provider credentials are substituted on every allowed host, with no per-host off switch.
+  - Python trusts the OpenShell CA through `SSL_CERT_FILE`.
+  - The 34 s first SSH was a one-off.
+  - The rootful Podman VM mounts `/Users` read-write.
+- Agreed and recorded D-039 to D-043, which supersede D-034, D-031 (plus D-030's fixed size) and D-037:
+  - Connectors run on the host.
+  - One keyed pool, sized per agent.
+  - A slim, dedicated image.
+  - A dedicated Podman machine with no mounts.
+  - A separate gateway key on a pass-through endpoint.
+- Updated F-030, F-031 and F-032 in feature_list.json, and added a revision note to the local spec.
+
+**Gates**: `scripts/validate-harness.sh` passes. Only docs and trackers changed.
+
+**Next session**: plan F-030.
