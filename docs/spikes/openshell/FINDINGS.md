@@ -210,6 +210,82 @@ agents with credentials are created at claim time. Allowed hosts for
 credentialed agents must not reflect headers or URLs (no httpbin-like
 endpoints, no user-controlled redirects).
 ## Q5. Can the inference gateway forward to OpenJarvis `/v1`, and can that endpoint be limited to the gateway?
+
+**Verdict: CONFIRMED.** Setup: `jarvis serve --host 127.0.0.1 --port 8000
+-m qwen3.5:2b` with a throwaway `OPENJARVIS_API_KEY` (401 without it), then:
+
+```
+openshell provider create --name oj-spike-jarvis --type openai \
+  --credential OPENAI_API_KEY=<throwaway key> \
+  --config OPENAI_BASE_URL=http://host.openshell.internal:8000/v1
+openshell inference set --provider oj-spike-jarvis --model qwen3.5:2b
+  Validated Endpoints: http://host.openshell.internal:8000/v1/chat/completions (openai_chat_completions)
+```
+
+`http://host.containers.internal:8000/v1` failed verification ("failed to
+connect"). The gateway runs as a Kubernetes pod inside the cluster
+container, and inside that pod only `host.docker.internal` and
+`host.openshell.internal` resolve (both to `192.168.127.254`, the Podman
+host gateway, which forwards to the Mac's loopback). A loopback-only bind is
+enough.
+
+From a **deny-all** sandbox with no keys, `infer_probe.py` calls
+`https://inference.local/v1/chat/completions` with no Authorization header:
+
+```
+env vars named *KEY*/*TOKEN*: []
+status 200 14.8s            (first call: model load + 13k-token prompt)
+model qwen3.5:2b usage {'prompt_tokens': 13351, 'completion_tokens': 2, 'total_tokens': 13353}
+content ok
+```
+
+Warm calls: 0.2 s through `inference.local` and 0.21–0.22 s calling
+`jarvis serve` directly, so the gateway adds no measurable latency.
+`inference.local` is not in any policy and does not resolve via DNS; the
+OpenShell proxy handles it, even under `network_policies: {}`.
+
+Telemetry: `~/.openjarvis/telemetry.db` went from 37 to 38 rows; the new
+row is `model_id=qwen3.5:2b engine=ollama prompt_tokens=13351
+completion_tokens=2 latency_seconds=14.69`. (The gateway's two verification
+calls also wrote rows 36–37.)
+
+Restricting `/v1` to the gateway: a deny-all sandbox cannot reach it
+directly:
+
+```
+BLOCKED http://host.openshell.internal:8000/v1/models
+BLOCKED http://host.containers.internal:8000/v1/models
+BLOCKED http://host.docker.internal:11434/api/tags
+```
+
+The endpoint stays bound to loopback (not reachable from the LAN), and the
+API key lives only in the gateway's provider, so sandboxes never see it.
+Other processes on the Mac and other containers in the Podman VM can still
+reach it, but only with the key.
+
+Other observations:
+
+- `energy_joules` is 0 on all 38 rows, before and after the spike. Energy
+  telemetry is not enabled in this setup; that is unrelated to the sandbox.
+- A one-line question cost 13,351 prompt tokens: `jarvis serve`'s
+  `/v1/chat/completions` wraps requests in an agent with a large system
+  prompt and tools. Sandboxed agents run their own loop, so the gateway's
+  upstream should be a plain engine pass-through, not an agent.
+- The gateway route is gateway-wide (one provider + model for all
+  sandboxes), and **the gateway forces its configured model**: a request for
+  `qwen3:0.6b` was answered by `qwen3.5:2b` (response `model` and the
+  telemetry row both say `qwen3.5:2b`). Per-agent model choice is not
+  possible through this route.
+- `--no-keep` combined with `ssh-config` in a process substitution
+  (`-F <(...)`) fails; write the SSH config to a file.
+
+Implication for F-031 / D-033: the agreed design works as specified. F-031
+needs a pass-through mode for the host endpoint (no agent wrapping). Because
+the gateway forces one model for every sandbox, OpenJarvis's per-agent model
+and local-versus-cloud routing can only happen on the host side of the
+gateway (the host endpoint picks the engine), and the request's `model`
+field cannot carry that choice. The `agent` column is empty, so sandboxed
+calls need another way to be tagged with the agent that made them.
 ## Q6. How does the host run a command in an existing sandbox and read clean output?
 
 **Verdict: CONFIRMED (over SSH).**
