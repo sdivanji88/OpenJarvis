@@ -109,6 +109,56 @@ binaries the agent's tools use (at minimum the sandbox Python). Always upload
 to a directory, then verify the file exists. Open the first SSH connection
 while warming the pool, not on the request path.
 ## Q3. Does `openshell policy set` change a live sandbox's network policy?
+
+**Verdict: CONFIRMED, but it takes 2–10 s.** On the live `oj-spike-deny`
+sandbox (probed over SSH; the curl line checks binary scoping):
+
+```
+--- 1. deny-all
+BLOCKED https://example.com
+BLOCKED https://pypi.org
+BLOCKED curl https://example.com
+--- 2. openshell policy set --policy allow_example.yaml --wait oj-spike-deny
+✓ Policy version 4 loaded (active version: 4)      real 8.05
+ALLOWED https://example.com
+BLOCKED https://pypi.org
+BLOCKED curl https://example.com
+--- 3. openshell policy set --policy deny_all.yaml --wait oj-spike-deny
+✓ Policy version 5 loaded (active version: 5)      real 9.05
+BLOCKED https://example.com
+BLOCKED https://pypi.org
+BLOCKED curl https://example.com
+```
+
+Policies can be loosened and tightened on a live sandbox. `openshell policy
+list` keeps the full revision history (`Loaded` / `Superseded`).
+
+**Binary matching uses the resolved executable.** The first attempt listed
+only `/sandbox/.venv/bin/python3` and stayed blocked although the policy had
+loaded. `openshell logs` showed why:
+
+```
+CONNECT action=deny binary=/sandbox/.uv/python/cpython-3.14.3-linux-aarch64-gnu/bin/python3.14
+  cmdline=/sandbox/.venv/bin/python3, /sandbox/net_probe.sh dst_host=example.com dst_port=443
+  reason=binary '/sandbox/.uv/python/.../python3.14' ... not allowed in policy 'example'
+```
+
+Adding `/sandbox/.uv/python/**` fixed it. Every denial is logged with binary,
+ancestors, command line, destination and reason, and the sandbox sends
+"denial analysis" proposals to the gateway.
+
+**Latency.** `policy set --wait` took 2.0, 6.0, 8.1, 9.1 and 10.1 s across
+five changes. The sandbox picks up changes on a settings poll
+(`Settings poll: config change detected ... policy_changed=true`), so the
+wait is up to one poll interval (about 10 s).
+
+Implication for F-030: applying the agent's policy at claim time (D-031)
+puts up to ~10 s on every run, including chat, which defeats the warm pool.
+Options for a design revisit: per-agent pools created with the agent's
+policy (`--policy` at create time costs nothing extra), or pre-applying a
+policy to a pooled sandbox before it is claimed. Generated policies must
+list resolved executables (e.g. `/sandbox/.uv/python/**`), and `openshell
+logs` denials should be surfaced in OpenJarvis's audit log.
 ## Q4. Can a provider be attached after a sandbox is created?
 ## Q5. Can the inference gateway forward to OpenJarvis `/v1`, and can that endpoint be limited to the gateway?
 ## Q6. How does the host run a command in an existing sandbox and read clean output?
