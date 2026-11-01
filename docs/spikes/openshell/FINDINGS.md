@@ -58,6 +58,56 @@ OpenJarvis image matters: every megabyte is paid on first pull.
 
 ## Q1. How long does creating a sandbox take?
 ## Q2. Can a pooled deny-all sandbox reach the network before its policy is applied?
+
+**Verdict: CONFIRMED that it cannot.** A sandbox created with
+`--policy deny_all.yaml` (`network_policies: {}`) blocks every destination
+from its very first command:
+
+```
+openshell sandbox create --name oj-spike-deny --from base --no-tty --no-auto-providers \
+  --policy docs/spikes/openshell/policies/deny_all.yaml \
+  --upload docs/spikes/openshell/net_probe.sh:/sandbox -- \
+  sh /sandbox/net_probe.sh https://example.com https://pypi.org http://host.containers.internal:11434/api/tags
+BLOCKED https://example.com
+BLOCKED https://pypi.org
+BLOCKED http://host.containers.internal:11434/api/tags
+```
+
+Control, same command without `--policy` (OpenShell's default policy):
+
+```
+BLOCKED https://example.com
+ALLOWED https://pypi.org
+BLOCKED http://host.containers.internal:11434/api/tags
+```
+
+So the probe can tell the two apart, and enforcement is active from the
+first command even though `policy get` on a fresh sandbox shows version 1 as
+`Status: Pending, Active: 0`.
+
+Other observations:
+
+- **Network rules are scoped to binaries.** Each rule in
+  `network_policies` lists allowed `endpoints` (host, port, optional L7
+  `protocol: rest` with method/path rules and `access: read-only`) *and* the
+  `binaries` allowed to use them. The default allows PyPI only for the
+  sandbox venv Python, pip and uv. The probe therefore uses
+  `/sandbox/.venv/bin/python3`.
+- **The default policy is permissive** for an untrusted agent: Anthropic,
+  OpenAI, GitHub (including git push paths for copilot), PyPI, Cursor,
+  VS Code and NVIDIA endpoints. OpenJarvis must always pass its own policy.
+- **`--upload <file>:<file path>` at create time silently uploads nothing**
+  (it prints "Files uploaded"). `--upload <file>:/sandbox` (a directory) and
+  `openshell sandbox upload <name> <file> <dir>` both work.
+- The first SSH connection to a newly created sandbox took 34 s; later
+  connections to the same sandbox took ~20 ms.
+
+Implication for F-030: create pool sandboxes with an explicit deny-all
+policy; never rely on OpenShell's default. Policy generation (D-035) must
+emit binary-scoped rules, so `[sandbox.agents.<id>]` needs to know which
+binaries the agent's tools use (at minimum the sandbox Python). Always upload
+to a directory, then verify the file exists. Open the first SSH connection
+while warming the pool, not on the request path.
 ## Q3. Does `openshell policy set` change a live sandbox's network policy?
 ## Q4. Can a provider be attached after a sandbox is created?
 ## Q5. Can the inference gateway forward to OpenJarvis `/v1`, and can that endpoint be limited to the gateway?
