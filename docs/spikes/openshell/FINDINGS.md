@@ -413,6 +413,37 @@ Implication for F-030: name every OpenJarvis sandbox with a fixed prefix
 the pool counts terminating pods against the Podman VM's capacity (4 CPUs,
 8 GiB here). The host must own the inference route and reset it with
 `inference set` at startup.
+## Follow-up checks (after the architect and security design reviews)
+
+**F1. Substitution is not scoped to a provider's hosts, and cannot be
+switched off per host.** With `oj-spike-dummy` attached and
+`policies/allow_two_echo.yaml` allowing httpbin.org and postman-echo.com,
+both hosts received the real value. The same happened with no `tls` field at
+all, and with `tls: passthrough`, `tls: skip` and `tls: none` (unknown
+values are accepted silently):
+
+```
+"x-spike":"spike-dummy-token-not-a-secret"        (every variant)
+"url":"https://postman-echo.com/get?q=spike-dummy-token-not-a-secret"
+```
+
+OpenShell terminates TLS by default. **Every allowed host in a sandbox
+receives every attached provider's real token** if the agent puts the
+placeholder in a header or the URL query.
+
+**F2. Python trusts the OpenShell TLS proxy.** The sandbox sets
+`SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE` and `CURL_CA_BUNDLE` to
+`/etc/openshell-tls/ca-bundle.pem` (and `NODE_EXTRA_CA_CERTS`), and Python
+`urllib` received the substituted token. Clients that ignore these
+variables (for example a pinned certifi bundle) would fail TLS.
+
+**F3. The 34 s first SSH (Q2) was a one-off.** Two fresh sandboxes created
+with an upload answered their first SSH command in 0.01 s.
+
+**F4. The rootful Podman VM mounts macOS `/Users` read-write** (virtiofs),
+plus `/private`, `/var/folders` and `/etc/containers`. A sandbox escape to
+root in the VM reaches `~/.openjarvis` and the rest of the home directory.
+
 ## Implications for F-030 – F-033
 
 Decisions that hold as agreed:
