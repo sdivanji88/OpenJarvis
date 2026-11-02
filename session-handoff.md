@@ -2,11 +2,87 @@
 
 > Read this at the start of every session. Update it before ending every session.
 
-**Last updated:** 2026-10-11T17:15:00Z
+**Last updated:** 2026-11-02T14:50:00Z
 
 ---
 
-## What was accomplished
+## Latest session (2026-11-02): F-030 verified
+
+- **F-030 is `verified`.** All 8 criteria pass with evidence, and all hard gates exit 0 on the final tree; see `feature_list.json`. It is on branch `openshell-sandbox` in [PR #1](https://github.com/sdivanji88/OpenJarvis/pull/1).
+- Added this session:
+  - `sandbox/openshell_preflight.py`. Runs are refused when the machine is missing, rootless or stopped, the gateway isn't connected, or the image isn't in the cluster. Mounted host folders only warn (D-046).
+  - Pre-flight runs again on every attempt, so fixing the problem is enough.
+  - The same checks appear as rows in `jarvis doctor`.
+  - Sandbox names carry the owner PID (`oj-<pid>-<agent>-<hex>`). At startup a process deletes only sandboxes whose owner is dead, so it no longer kills the scheduler's sandboxes.
+  - The image build script removes older images.
+  - The user guide is at `docs/user-guide/openshell-sandbox.md` and is in the mkdocs nav.
+  - D-047: `uv.lock` patched for aiohttp, certifi, filelock and virtualenv advisories. Python 3.10 keeps filelock 4.1.0.
+- **Machine state (D-046 migration):**
+  - The gateway now runs on a dedicated rootful Podman machine `openshell` (4 CPU, 8 GiB, no host mounts). `podman-machine-default` is **stopped**; only one machine runs at a time on macOS. The old gateway on the default machine was destroyed.
+  - `export DOCKER_HOST=unix:///var/folders/2h/6kqfgztx11j4bpk1x3m21wp00000gn/T/podman/openshell-api.sock` before `openshell` commands.
+  - The user must start machines from their own terminal; one started from an agent shell dies with the command.
+  - To restart a stopped gateway, run `podman --connection openshell-root start openshell-cluster-openshell` (about 2 min). Non-interactive `openshell gateway start` doesn't start it, and `--recreate` wipes the image.
+  - Image: `openshell/sandbox-from:1793630675`. The gateway has no inference route, so sandboxed runs get 503 "cluster inference is not configured" until F-031.
+- The real `~/.openjarvis/config.toml` is **unchanged** (runtime not openshell), so the 07:00 digest keeps working. Live checks used `OPENJARVIS_CONFIG=/tmp/oj-openshell/config.toml`.
+- **Next:** F-031 (gateway key and pass-through model endpoint, D-043).
+
+## Earlier session (2026-11-01, later): F-030 started test-first; F-029 verified
+
+- **F-029 is `verified`** (developer sign-off on FINDINGS).
+- **F-030 is `in_progress`** on branch `openshell-sandbox`, in [PR #1](https://github.com/sdivanji88/OpenJarvis/pull/1). The PR is on the fork with base `morning-digest`; change the base to `main` once `morning-digest` merges.
+  - Done:
+    - `sandbox/openshell_policy.py` (deny-all policy plus allowed hosts).
+    - `sandbox/openshell_pool.py` (keyed, single-use, background refill).
+    - `sandbox/openshell_cli.py` (create, SSH exec, delete, list, gateway check).
+    - `sandbox/openshell_runner.py` (fails closed; `shared_runner()` per process).
+    - `[sandbox.allowed_hosts]` and `[sandbox.pool_sizes]` config.
+    - `agents/factory.py` `build_agent()` used at all 11 construction sites, with a guard test (D-044).
+    - `SystemBuilder` hands the shared runner to `JarvisSystem`.
+  - D-045: with `runtime = "openshell"`, runs fail closed until the in-sandbox entrypoint and F-031 land.
+  - Also done:
+    - The in-sandbox entrypoint (`sandbox/entrypoint.py`).
+    - The slim image (`deploy/openshell/`), built by `scripts/build-openshell-image.sh`. The build stages a wheel and hash-checked Linux wheels on the host, so the image build needs no network apart from apt `iproute2`, which OpenShell's supervisor needs. The script prints the `[sandbox] image` tag.
+    - End to end: `build_agent(SimpleAgent)` under `runtime = "openshell"` answered "pong" from inside a sandbox, through the gateway.
+  - AC-002, AC-003, AC-004 and AC-005 are `pass` with evidence.
+  - Left in F-030:
+    - `jarvis doctor` checks (AC-007).
+    - The refusal checks for a machine that isn't rootful and a missing image (AC-006).
+    - Dedicated Podman machine guidance (D-042).
+    - Pruning old `openshell/sandbox-from` images.
+    - Evidence for AC-001 and AC-008.
+    - The Definition of Done gates.
+  - Gateway state:
+    - The temporary provider `oj-dev-ollama` was deleted on 2026-11-02, and no providers remain. OpenShell has no command to clear the inference route, so it still names the deleted provider, and sandboxed model calls fail (`engine not reachable at https://inference.local`) until F-031 sets the route.
+    - The current image is `openshell/sandbox-from:1793544465`.
+- Full unit suite: 9222 passed. 3 failed in `tests/security/test_data_boundary_audit.py`; they fail the same way without this branch's changes.
+
+## Earlier session (2026-11-01): OpenShell agent sandboxing — design agreed, spike F-029 run
+
+- **Design agreed (D-029 to D-038), features F-029 to F-033 added.** Every agent run executes in a disposable OpenShell sandbox from a warm pool. Model calls go through the OpenShell inference gateway to OpenJarvis `/v1`, and the run fails closed when OpenShell is unavailable. Spec and plan are local only (gitignored): `docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md`, `docs/superpowers/plans/2026-11-01-openshell-spike-f029.md`.
+- **Spike F-029 is `verifying`.** Findings are in `docs/spikes/openshell/FINDINGS.md`.
+  - Creating a sandbox takes ~2 s with a cached image. Deny-all is enforced from the first command. Live policy changes work but take 2–10 s.
+  - Providers can't be attached after creation. Their credentials never enter the sandbox: the sandbox holds a placeholder that the proxy substitutes in headers and URL query strings.
+  - The gateway forwards to `jarvis serve` through `host.openshell.internal`, and telemetry records the call.
+- **Machine state:**
+  - The Podman machine is now **rootful**, which the gateway requires. The gateway `openshell` is running in the Podman VM.
+  - The 1.13 GB `base` image is cached in the cluster.
+  - The gateway's inference route still names the deleted provider `oj-spike-jarvis`. Overwrite it with `openshell inference set` before relying on it.
+
+- **Design revised after the spike (D-039 to D-043), agreed.** Follow-up checks showed that provider credentials are substituted on every allowed host (FINDINGS F1), and that the Podman VM mounts `/Users` (F4).
+  - D-039: connectors run on the host, and sandboxes hold no credentials.
+  - D-040: one pool keyed by policy and image, sized per agent.
+  - D-041: a slim, dedicated OpenShell image.
+  - D-042: a dedicated Podman machine with no host mounts.
+  - D-043: a separate gateway key on a pass-through model endpoint.
+  F-030, F-031 and F-032 were updated (F-032 is now the host-side connector endpoint).
+
+### Next step — start here
+
+F-030 is verified (see the latest session above). Start F-031: the gateway key and the pass-through model endpoint (D-043).
+
+---
+
+## What was accomplished (previous sessions)
 
 - **F-025 (WhatsApp business updates in the morning digest): design agreed, not built.** This was a design-only session; decisions D-018 to D-026 are in `docs/DECISION_LOG.md`.
   - A new `whatsapp_desktop` connector will read the WhatsApp Mac app's local SQLite data read-only, for business chats only. Certified business names are included automatically, profile-only chats need approval through `jarvis whatsapp review`, and an exclude list overrides both.

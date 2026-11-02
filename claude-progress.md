@@ -168,3 +168,102 @@ None.
 Both are folded into F-025's summary and its criteria AC-002 and AC-004.
 
 **Next session**: dispatch the orchestrator for F-025.
+
+### Session 8 -- 2026-11-01T13:45:00Z (design-consensus: OpenShell sandboxing; spike F-029)
+
+**What was done**:
+- Interviewed the user about running agents in OpenShell sandboxes. Agreed D-029 to D-038:
+  - Every agent run goes into a single-use sandbox from a warm pool of two, owned by the host.
+  - Model calls go through the OpenShell inference gateway to OpenJarvis `/v1`.
+  - All tools run inside the sandbox, with short-lived, minimum-permission tokens.
+  - Policies are generated from config; memory goes in as a read-only snapshot.
+  - The run fails closed when OpenShell is unavailable.
+  - The work is split into a spike plus four features.
+- Added F-029 (spike) and F-030 to F-033 to feature_list.json.
+- Ran spike F-029 against OpenShell 0.0.21 with Podman 6.0.2, using only dummy credentials. Findings are in `docs/spikes/openshell/FINDINGS.md`:
+  - The gateway needs a rootful Podman machine, and OpenShell's doctor does not detect this.
+  - The `python` community image is not public; `base` is 1.13 GB and took 29 min to pull.
+  - With a cached image, creating a sandbox takes ~2 s and an SSH round trip ~20 ms.
+  - Deny-all is enforced from the first command. Live policy changes work but take 2–10 s, and rules match resolved binaries.
+  - Providers cannot be attached after creation, and their credentials never enter the sandbox: the proxy substitutes them in headers and URL query strings, not in bodies.
+  - The inference gateway works through `host.openshell.internal`, and telemetry recorded the call. The gateway forces a single model.
+  - Deletion is asynchronous, with ~35 s of pod termination.
+  - OpenShell can't build `Dockerfile.sandbox` as-is, and any image needs a `sandbox` user.
+- F-029 is `verifying`, with evidence on all five acceptance criteria.
+
+**Gates**: `scripts/validate-harness.sh` passes. Only docs, trackers and spike scripts changed.
+
+**Next session**: design-consensus to revisit D-031, D-034 and D-037; then plan F-030.
+
+### Session 8b -- 2026-11-01T14:30:00Z (design-consensus: revise D-031, D-034, D-037 after spike)
+
+**What was done**:
+- Ran architect and security-reviewer design reviews of the spike findings.
+- Ran follow-up checks:
+  - Provider credentials are substituted on every allowed host, with no per-host off switch.
+  - Python trusts the OpenShell CA through `SSL_CERT_FILE`.
+  - The 34 s first SSH was a one-off.
+  - The rootful Podman VM mounts `/Users` read-write.
+- Agreed and recorded D-039 to D-043, which supersede D-034, D-031 (plus D-030's fixed size) and D-037:
+  - Connectors run on the host.
+  - One keyed pool, sized per agent.
+  - A slim, dedicated image.
+  - A dedicated Podman machine with no mounts.
+  - A separate gateway key on a pass-through endpoint.
+- Updated F-030, F-031 and F-032 in feature_list.json, and added a revision note to the local spec.
+
+**Gates**: `scripts/validate-harness.sh` passes. Only docs and trackers changed.
+
+**Next session**: plan F-030.
+
+### Session 9 -- 2026-11-01T14:15:00Z (F-030 test-first; F-029 verified; PR #1)
+
+**What was done**:
+- Built the first part of F-030 test-first (red-green-refactor):
+  - The policy generator.
+  - The keyed pool, with background refill. Live testing showed the synchronous refill made warm claims take 2 s; they now take 0.05 s.
+  - The OpenShell command-line wrapper.
+  - The runner, which fails closed, and `shared_runner()`.
+  - The sandbox config fields.
+  - `agents/factory.py` `build_agent()` at all 11 agent construction sites, with a guard test.
+  - `SystemBuilder` wiring.
+- Found that the existing `ContainerRunner` was built but never used, so `[sandbox] enabled` had no effect. The developer chose a single factory (D-044) and wiring it in now, failing closed until F-031 (D-045).
+- Live checks against the OpenShell gateway:
+  - The adapter and runner work end to end, and no `oj-` sandboxes are left behind.
+  - An agent built by the factory under `runtime = "openshell"` ran in a sandbox and returned the expected missing-entrypoint error.
+- Opened [PR #1](https://github.com/sdivanji88/OpenJarvis/pull/1) on the fork, with base `morning-digest`.
+- Moved F-029 to `verified` on developer sign-off.
+
+**Gates**:
+- Full unit suite: 9222 passed. 3 failed in `test_data_boundary_audit.py`; they fail the same way without this branch's changes.
+- `scripts/validate-harness.sh` passes.
+- The other Definition of Done gates have not been run yet. F-030 is not complete.
+
+**Next session**: F-030 in-sandbox entrypoint and slim image, then doctor checks.
+
+### Session 10 -- 2026-11-02T14:50:00Z (F-030 completed and verified)
+
+**What was done**:
+- Pre-flight checks (`sandbox/openshell_preflight.py`), shown as `jarvis doctor` rows. A missing, rootless or stopped machine, a disconnected gateway, or a missing image refuses runs; runs re-check and recover without a restart. Mounted host folders only warn (D-046, developer's choice).
+- Sandbox names carry the owner PID. Startup cleanup removes only sandboxes with a dead owner, so other live processes keep theirs.
+- Migrated the gateway to a dedicated rootful `openshell` Podman machine with no host mounts (D-046). The image was rebuilt there; the build script now removes older images.
+- User guide `docs/user-guide/openshell-sandbox.md`, added to the mkdocs nav.
+- Fixes found by live checks:
+  - With OpenShell down, shutdown logged a traceback; it now skips cleanup when pre-flight never passed.
+  - The image row blamed the image when the gateway was down; it now says it cannot check.
+- Patched dependency advisories inherited from the base branch (D-047) and rebuilt the image as `openshell/sandbox-from:1793630675`.
+- Live evidence:
+  - `jarvis ask` and `jarvis chat` ran inside `oj-` sandboxes.
+  - Runs were refused with the gateway stopped and with the image missing, and recovered after a gateway restart.
+  - Doctor showed 4 ok rows on the dedicated machine, and a fail plus a mounts warning on the default machine.
+  - A SIGKILLed owner's sandbox was removed at the next start, while the live owner's sandbox was kept.
+
+**Gates** (final tree, Cartesia env unset):
+- Hard gates, all exit 0:
+  - security: pip-audit no known vulnerabilities, bandit, gitleaks.
+  - test: 9257 passed.
+  - integration: 50 passed.
+  - smoke, architecture-review, validate-harness.
+- Soft gates: lint is clean. Code review flagged the filelock major bump; the Python 3.10 unit failure set is identical with the old and new lock.
+
+**Next session**: F-031 (gateway key and pass-through model endpoint, D-043).

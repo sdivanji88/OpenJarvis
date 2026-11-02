@@ -1387,6 +1387,506 @@
       },
       "blocker": null,
       "note": "Spike answered: the scheduler service can read WhatsApp's Group Container on this macOS without Full Disk Access."
+    },
+    {
+      "id": "F-029",
+      "title": "Spike: confirm OpenShell 0.0.21 behaviour on macOS + Podman",
+      "description": "Time-boxed spike that confirms the OpenShell behaviour the sandbox design relies on, before building it. Findings go in docs/spikes/openshell/FINDINGS.md.",
+      "priority": "required",
+      "dependencies": [],
+      "status": "verified",
+      "design": {
+        "status": "agreed",
+        "risk": "escalated",
+        "summary": "Measure sandbox creation time through the gateway on macOS with Podman; confirm `openshell policy set` changes a live sandbox's network policy; check whether a provider can be attached after creation; confirm the gateway's inference upstream can point at OpenJarvis /v1/chat/completions; check whether a deny-all sandbox can make any network call between creation and policy application.",
+        "open_questions": [
+          "Can the host /v1 endpoint be restricted to the gateway only?"
+        ],
+        "decision_refs": [
+          "D-031",
+          "D-038"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "Sandbox creation time (cold and warm image) is measured and recorded in docs/spikes/openshell/FINDINGS.md",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "python3 docs/spikes/openshell/time_create.py base 5 docs/spikes/openshell/policies/deny_all.yaml",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T13:40:00Z",
+              "note": "Cached base image: create median 2.0 s (1.9-2.7 s); cold first pull of the 1.13 GB base image took 29 min 20 s. OpenJarvis image cold time not measured: OpenShell cannot build Dockerfile.sandbox as-is (Finding B3). Details: docs/spikes/openshell/FINDINGS.md#q1-how-long-does-creating-a-sandbox-take"
+            }
+          ]
+        },
+        {
+          "id": "AC-002",
+          "statement": "A live sandbox's network policy is changed with `openshell policy set` and the change is observed to take effect (allowed host reachable, other hosts blocked)",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "openshell policy set --policy docs/spikes/openshell/policies/allow_example.yaml --wait oj-spike-deny (then deny_all.yaml), probing with net_probe.sh over SSH",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T13:40:00Z",
+              "note": "example.com went BLOCKED -> ALLOWED -> BLOCKED on the live sandbox while pypi.org and curl stayed BLOCKED; each policy set took 2-10 s. Details: docs/spikes/openshell/FINDINGS.md#q3-does-openshell-policy-set-change-a-live-sandboxs-network-policy"
+            }
+          ]
+        },
+        {
+          "id": "AC-003",
+          "statement": "Whether a provider can be attached to an existing sandbox is recorded, with the command and output",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "openshell sandbox --help; openshell settings --help; openshell provider update oj-spike-dummy --credential SPIKE_TOKEN=spike-dummy-token-ROTATED, then curl httpbin.org/headers from the running and a new sandbox",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T13:40:00Z",
+              "note": "No command attaches a provider to a running sandbox, and credentials are fixed at creation (running sandbox kept the old value, a new one got the rotated value). Recorded as REFUTED. Details: docs/spikes/openshell/FINDINGS.md#q4-can-a-provider-be-attached-after-a-sandbox-is-created"
+            }
+          ]
+        },
+        {
+          "id": "AC-004",
+          "statement": "An agent inside a sandbox completes a chat call through the OpenShell inference gateway with OpenJarvis /v1/chat/completions as upstream",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "openshell inference set --provider oj-spike-jarvis --model qwen3.5:2b (OPENAI_BASE_URL=http://host.openshell.internal:8000/v1); then infer_probe.py in a deny-all sandbox",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T13:40:00Z",
+              "note": "https://inference.local/v1/chat/completions returned 200 with content 'ok' and no keys in the sandbox; telemetry.db went 37 -> 38 rows (model qwen3.5:2b, engine ollama). Details: docs/spikes/openshell/FINDINGS.md#q5-can-the-inference-gateway-forward-to-openjarvis-v1-and-can-that-endpoint-be-limited-to-the-gateway"
+            }
+          ]
+        },
+        {
+          "id": "AC-005",
+          "statement": "A deny-all pooled sandbox is shown to have no network access before its agent policy is applied",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "openshell sandbox create --name oj-spike-deny --from base --policy docs/spikes/openshell/policies/deny_all.yaml --upload docs/spikes/openshell/net_probe.sh:/sandbox -- sh /sandbox/net_probe.sh https://example.com https://pypi.org http://host.containers.internal:11434/api/tags",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T13:40:00Z",
+              "note": "All three BLOCKED from the first command; the default-policy control allowed pypi.org. Details: docs/spikes/openshell/FINDINGS.md#q2-can-a-pooled-deny-all-sandbox-reach-the-network-before-its-policy-is-applied"
+            }
+          ]
+        }
+      ],
+      "verification": {
+        "commands": [
+          "python3 docs/spikes/openshell/time_create.py base 5 docs/spikes/openshell/policies/deny_all.yaml",
+          "openshell policy set --policy docs/spikes/openshell/policies/allow_example.yaml --wait oj-spike-deny (then deny_all.yaml), probing with net_probe.sh over SSH",
+          "openshell sandbox --help; openshell settings --help; openshell provider update oj-spike-dummy --credential SPIKE_TOKEN=spike-dummy-token-ROTATED, then curl httpbin.org/headers from the running and a new sandbox",
+          "openshell inference set --provider oj-spike-jarvis --model qwen3.5:2b (OPENAI_BASE_URL=http://host.openshell.internal:8000/v1); then infer_probe.py in a deny-all sandbox",
+          "openshell sandbox create --name oj-spike-deny --from base --policy docs/spikes/openshell/policies/deny_all.yaml --upload docs/spikes/openshell/net_probe.sh:/sandbox -- sh /sandbox/net_probe.sh https://example.com https://pypi.org http://host.containers.internal:11434/api/tags"
+        ],
+        "manual_checks": [
+          "Findings and implications reviewed in docs/spikes/openshell/FINDINGS.md (developer sign-off 2026-11-01)"
+        ],
+        "last_verified_at": "2026-11-01T19:45:00+05:30"
+      },
+      "blocker": null,
+      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md Spike run 2026-11-01; D-031, D-034 and D-037 need revisiting (see FINDINGS 'Implications')."
+    },
+    {
+      "id": "F-030",
+      "title": "OpenShell runtime for SandboxedAgent with a warm pool",
+      "description": "Add OpenShell as a runtime behind SandboxedAgent so every agent run executes in a single-use sandbox from a pool keyed by agent policy and image, built from a slim dedicated image, inside a dedicated Podman machine, failing closed.",
+      "priority": "required",
+      "dependencies": [
+        "F-029"
+      ],
+      "status": "verified",
+      "design": {
+        "status": "agreed",
+        "risk": "escalated",
+        "summary": "New OpenShell runner selected by [sandbox] runtime = \"openshell\". One pool keyed by (generated agent policy, image digest) with a per-agent pool size (1 for interactive agents such as chat, 0 = create on demand); sandboxes are created with their agent's binary-scoped policy (resolved executables, e.g. /sandbox/.uv/python/**) on a deny-all base, driven over SSH (openshell sandbox ssh-config), used once and deleted; the host checks the policy version before use, cleans up by name prefix at startup, and counts ~35 s pod termination against VM capacity. Slim digest-pinned python:3.12-slim image with a sandbox user, built from its own context with a .dockerignore in a separate build step. Dedicated rootful Podman machine with no macOS folders mounted. Fails closed with jarvis doctor checks (rootful dedicated VM, gateway, image present, creation timeout).",
+        "open_questions": [
+          "RESOLVED: --from <dir> builds once and pushes openshell/sandbox-from:<timestamp> into the cluster; creates from that tag do not rebuild (~1.3 s).",
+          "RESOLVED: the sandbox does not need the openjarvis_rust extension (core imports and the entrypoint run without it).",
+          "Filesystem policy behaviour (untested in the spike)",
+          "Per-sandbox CPU / memory limits",
+          "RESOLVED: scripts/build-openshell-image.sh removes older openshell/sandbox-from images from the cluster after a successful build."
+        ],
+        "decision_refs": [
+          "D-029",
+          "D-030",
+          "D-032",
+          "D-035",
+          "D-036",
+          "D-040",
+          "D-041",
+          "D-042",
+          "D-044",
+          "D-045",
+          "D-046",
+          "D-047"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "With [sandbox] runtime = \"openshell\", every agent run (including chat) executes inside an OpenShell sandbox",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "OPENJARVIS_CONFIG=/tmp/oj-openshell/config.toml uv run jarvis ask --agent simple \"hi\" 2>&1 | rg -o \"Sandbox oj-\\d+-simple-[0-9a-f]+ exited 1: Agent failed: EngineConnectionError: vllm engine at https://inference.local\"",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:27:40Z",
+              "note": "Live, dedicated rootful 'openshell' machine, image openshell/sandbox-from:1793628918. The agent ran inside sandbox oj-31417-simple-c2e0e0f8 and called the gateway, which returned 503 'cluster inference is not configured' (model routing is F-031, per D-045). No oj- sandboxes left afterwards."
+            },
+            {
+              "type": "manual",
+              "observation": "jarvis chat --agent simple driven through a pseudo-terminal (script -q /dev/null) with the same config: the chat turn ran in sandbox oj-31589-simple-25963deb and failed at inference.local with the same 503; no oj- sandboxes left afterwards.",
+              "timestamp": "2026-11-02T14:29:30Z"
+            },
+            {
+              "type": "command",
+              "command": "uv run pytest tests/agents/test_factory.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:22:58Z",
+              "note": "Guard test: every agent construction site (sdk, ask, chat, serve, orchestrator, executor, hybrid runner) goes through build_agent, which wraps in SandboxedAgent when the runtime is openshell. Also covered by scripts/test.sh (9257 passed)."
+            }
+          ]
+        },
+        {
+          "id": "AC-002",
+          "statement": "Sandboxes are drawn from a pool keyed by agent policy and image digest; an agent with pool size 1 gets a pre-created sandbox, pool size 0 creates on demand",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "uv run pytest tests/sandbox/test_openshell_pool.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T14:48:52Z",
+              "note": "14 passed: keyed by policy+image, size 1 pre-creates, size 0 creates on demand, claim does not wait for refill. Live: warm run 0.05-0.07 s vs 2.0 s cold."
+            }
+          ]
+        },
+        {
+          "id": "AC-003",
+          "statement": "Each sandbox is used for exactly one run and deleted afterwards; changing an agent's policy config never hands out a sandbox with the old policy",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "uv run pytest tests/sandbox/test_openshell_pool.py tests/sandbox/test_openshell_runner.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T14:48:52Z",
+              "note": "Sandbox deleted after every run (success, failure, timeout); never handed out twice; a changed policy gets a new sandbox."
+            }
+          ]
+        },
+        {
+          "id": "AC-004",
+          "statement": "The generated policy for an agent allows only that agent's configured hosts and binaries on top of the deny-all base (unit-tested)",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "uv run pytest tests/sandbox/test_openshell_policy.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T14:48:52Z",
+              "note": "17 passed: deny-all base, only configured hosts, one rule scoped to the image's resolved Python, invalid hosts/ports rejected."
+            }
+          ]
+        },
+        {
+          "id": "AC-005",
+          "statement": "The OpenShell image is built from its own context in a separate step, runs as the sandbox user, and its base image is pinned by digest",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "scripts/build-openshell-image.sh",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T14:48:52Z",
+              "note": "Built deploy/openshell (own context, python:3.12-slim pinned by index digest, sandbox user, root-owned venv, offline hash-checked install) and pushed openshell/sandbox-from:1793544465; build_agent(SimpleAgent) under runtime=openshell answered 'pong' from inside the sandbox via the gateway."
+            }
+          ]
+        },
+        {
+          "id": "AC-006",
+          "statement": "With the gateway stopped, the Podman machine not rootful, or the image missing, an agent run is refused with a clear error and no agent code runs on the host",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "OPENJARVIS_CONFIG=/tmp/oj-openshell/missing-image.toml uv run jarvis ask --agent simple \"hi\" 2>&1 | rg \"^OpenShell is not ready: Sandbox image: openshell/sandbox-from:0000000000 not in the cluster; run scripts/build-openshell-image.sh\"",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:31:00Z",
+              "note": "Live missing image: refused in 2.9 s with the build hint; no sandbox was created."
+            },
+            {
+              "type": "manual",
+              "observation": "Live gateway stopped (openshell gateway stop): jarvis ask printed 'OpenShell is not ready: OpenShell gateway: ... Connection refused; Sandbox image: cannot check: gateway not connected' with no traceback (fixed in 977c12be: shutdown skipped when pre-flight never passed, image no longer blamed). After podman --connection openshell-root start openshell-cluster-openshell, the next run executed in a sandbox without restarting OpenJarvis, and the image survived the restart.",
+              "timestamp": "2026-11-02T14:20:00Z"
+            },
+            {
+              "type": "command",
+              "command": "uv run pytest tests/sandbox/test_openshell_runner.py tests/sandbox/test_openshell_preflight.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:22:58Z",
+              "note": "Non-rootful machine, stopped machine, missing machine, gateway down and missing image all refuse; runs never fall back to the host; runs recover once pre-flight passes."
+            }
+          ]
+        },
+        {
+          "id": "AC-007",
+          "statement": "`jarvis doctor` reports the dedicated Podman machine (rootful, no host folders mounted), gateway status, and whether the sandbox image is present",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "OPENJARVIS_CONFIG=/tmp/oj-openshell/config.toml uv run jarvis doctor 2>&1 | rg -c \"✓\\s+│ (OpenShell Podman machine|Host folders mounted in VM|OpenShell gateway|Sandbox image)\"",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:30:30Z",
+              "note": "Prints 4: dedicated machine rootful and running, no host folders mounted, gateway connected, image present."
+            },
+            {
+              "type": "command",
+              "command": "OPENJARVIS_CONFIG=/tmp/oj-openshell/default-machine.toml uv run jarvis doctor 2>&1 | rg \"OpenShell Podman machine|Host folders\"",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:30:30Z",
+              "note": "Pointed at podman-machine-default: fail \"'podman-machine-default' is stopped\" and warn listing /Users, /private, /var/folders mounted (mounts are a warning per the user's choice)."
+            },
+            {
+              "type": "command",
+              "command": "uv run pytest tests/cli/test_doctor_cmd.py tests/sandbox/test_openshell_preflight.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:22:58Z",
+              "note": "Doctor rows map each pre-flight check; rootless, missing, stopped machine and mounted folders covered."
+            }
+          ]
+        },
+        {
+          "id": "AC-008",
+          "statement": "No sandboxes with the OpenJarvis name prefix remain after the host process shuts down or restarts",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "manual",
+              "observation": "Live, three real processes each starting the shared runner with pool_sizes simple=1: process A (pid 24996) warmed oj-24996-simple-3871ee35 and was killed with SIGKILL; process C (pid 25032) started and deleted A's orphan, leaving its own oj-25032-simple-6b5f0322; process B started and exited normally while C was alive and left C's sandbox alone; when C exited normally, no oj- sandboxes remained. Note: the owner PID is the Python process; killing only a 'uv run' wrapper leaves the Python child (and its sandbox) alive until it exits.",
+              "timestamp": "2026-11-02T14:16:30Z"
+            },
+            {
+              "type": "command",
+              "command": "uv run pytest tests/sandbox/test_openshell_pool.py tests/sandbox/test_openshell_runner.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:22:58Z",
+              "note": "Startup cleanup deletes only sandboxes with no owner PID, a dead owner, or our own PID; shutdown drains the pool."
+            }
+          ]
+        }
+      ],
+      "verification": {
+        "commands": [
+          "uv run pytest tests/sandbox tests/agents/test_factory.py tests/cli/test_doctor_cmd.py -q",
+          "scripts/test.sh",
+          "scripts/integration.sh",
+          "scripts/smoke.sh",
+          "scripts/security.sh",
+          "scripts/architecture-review.sh",
+          "scripts/validate-harness.sh"
+        ],
+        "manual_checks": [
+          "jarvis ask / jarvis chat with runtime = openshell run inside an oj- sandbox (temp config)",
+          "Gateway stopped and missing image: runs refused, then recover without restart",
+          "SIGKILLed owner's sandbox removed by the next process start; live owners' sandboxes kept"
+        ],
+        "last_verified_at": "2026-11-02T14:44:25Z"
+      },
+      "blocker": null,
+      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md | 2026-11-02: verified. All 8 criteria pass with evidence. Hard gates exit 0 on the final tree (73f92549, uv.lock patched per D-047): security (pip-audit: no known vulnerabilities; bandit; gitleaks) 14:41:55Z, test 9257 passed 14:43:17Z, integration 50 passed 14:43:25Z, smoke 14:43:27Z, architecture-review 14:43:47Z, validate-harness 14:43:48Z; soft gates lint clean, code-review reviewed (filelock major bump: py3.10 failure set identical old vs new lock). Sandbox image rebuilt from the patched lock: openshell/sandbox-from:1793630675, live doctor 4 ok rows and jarvis ask ran in oj-40232-simple-28dc8fb5. Known limit: Python 3.10 keeps filelock 4.1.0. Model access inside sandboxes is F-031."
+    },
+    {
+      "id": "F-031",
+      "title": "Sandboxed model calls go through the OpenShell gateway to OpenJarvis",
+      "description": "Sandboxed agents reach models only through the OpenShell inference gateway, whose upstream is a new pass-through model endpoint on the OpenJarvis host with its own key; the host fixes engine and model and enforces a per-run budget, and telemetry is kept and tagged with the agent.",
+      "priority": "required",
+      "dependencies": [
+        "F-030"
+      ],
+      "status": "todo",
+      "design": {
+        "status": "agreed",
+        "risk": "escalated",
+        "summary": "Sandboxes call https://inference.local (handled by the OpenShell proxy) and hold no API keys. The gateway's provider points at a new host pass-through endpoint (no agent wrapping) via http://host.openshell.internal:<port>/v1 with a key that only works on that endpoint. The host chooses engine and model regardless of the request and enforces a per-run budget; telemetry rows record the agent that made the call. The host resets the gateway inference route at startup (there is no inference delete).",
+        "open_questions": [
+          "How the agent identity reaches the host endpoint for telemetry tagging and budgets"
+        ],
+        "decision_refs": [
+          "D-033",
+          "D-043"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "A sandboxed agent's model calls appear in the OpenJarvis telemetry SQLite with tokens, latency, engine and the agent recorded",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-002",
+          "statement": "The pass-through endpoint adds no agent system prompt or tools (prompt tokens match the request)",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-003",
+          "statement": "The gateway's key is rejected by every other OpenJarvis endpoint, and OPENJARVIS_API_KEY is not given to the gateway",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-004",
+          "statement": "A request asking for a different model or engine is served by the host-chosen engine and model",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-005",
+          "statement": "A run that exceeds its budget is refused further model calls",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-006",
+          "statement": "No API key is present in the sandbox environment or filesystem, and the sandbox cannot reach Ollama or the host endpoint directly",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md"
+    },
+    {
+      "id": "F-032",
+      "title": "Host-side connector endpoint with run-scoped keys for sandboxed agents",
+      "description": "Personal-data connectors (Gmail, Calendar, ...) run on the host behind a narrow tool endpoint; sandboxed agents call it with a short-lived, run-scoped key that only allows that agent's allowlisted tool calls; every call is audited; sandboxes never hold a real credential.",
+      "priority": "required",
+      "dependencies": [
+        "F-030"
+      ],
+      "status": "todo",
+      "design": {
+        "status": "agreed",
+        "risk": "escalated",
+        "summary": "A host tool endpoint reachable from sandboxes (planned: http://host.openshell.internal:<port> plus one policy rule). For each run the host issues a run-scoped key, uploaded into the sandbox at claim, valid only for that run and that agent's allowlisted connector tools, revoked when the run ends. Calls are checked against the allowlist and written to the audit log. Connector credentials (refresh and access tokens) stay on the host; OpenShell providers are not used for personal data.",
+        "open_questions": [
+          "Exact transport and port for the host tool endpoint and how it is restricted to sandboxes",
+          "Shape of tool results returned to the sandbox (size limits, redaction)"
+        ],
+        "decision_refs": [
+          "D-039"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "No connector credential (access or refresh token) is present inside a sandbox, in its environment, files, or attached OpenShell providers",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-002",
+          "statement": "A sandboxed agent can call only the connector tools on its allowlist; other tools are refused and logged",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-003",
+          "statement": "A run-scoped key stops working when its run ends and is rejected for any other agent's tools",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-004",
+          "statement": "Every connector call from a sandbox is recorded in the audit log with agent, tool and outcome",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-005",
+          "statement": "The morning digest runs sandboxed and gets its Gmail and Calendar data through the host endpoint",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md"
+    },
+    {
+      "id": "F-033",
+      "title": "Host-side work before and after each sandboxed run",
+      "description": "The host uploads a read-only snapshot of the memory and context a run needs, downloads results, traces and output files, writes them to SQLite, and does host-only work (text-to-speech playback, WhatsApp reading) after the run.",
+      "priority": "required",
+      "dependencies": [
+        "F-030"
+      ],
+      "status": "todo",
+      "design": {
+        "status": "agreed",
+        "risk": "escalated",
+        "summary": "Before a run, the host uploads a read-only snapshot of only the memory and context that run needs. After it, the result, traces and output files (e.g. digest audio) are downloaded and only the host writes to its SQLite databases. Text-to-speech playback and reading the WhatsApp Group Container happen on the host.",
+        "open_questions": [],
+        "decision_refs": [
+          "D-034",
+          "D-036"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "A sandboxed agent can read the memory snapshot it was given and cannot write to host SQLite",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-002",
+          "statement": "Results and traces from a sandboxed run are recorded in host SQLite by the host",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-003",
+          "statement": "The morning digest runs sandboxed end to end and its audio plays on the host",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-004",
+          "statement": "Output files written by the agent are downloaded to the host before the sandbox is deleted",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md"
     }
   ]
 }

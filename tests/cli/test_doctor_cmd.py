@@ -290,3 +290,35 @@ class TestCheckNodejs:
         assert "Not found" in result.message
         assert result.details is not None
         assert "OpenClaw" not in result.details
+
+
+class TestOpenShellChecks:
+    def test_reports_nothing_for_other_runtimes(self) -> None:
+        from openjarvis.cli.doctor_cmd import _check_openshell
+        from openjarvis.core.config import JarvisConfig
+
+        assert _check_openshell(JarvisConfig()) == []
+
+    def test_reports_each_preflight_check_under_openshell(self) -> None:
+        from openjarvis.cli.doctor_cmd import _check_openshell
+        from openjarvis.core.config import JarvisConfig
+        from openjarvis.sandbox.openshell_preflight import Check
+
+        config = JarvisConfig()
+        config.sandbox.runtime = "openshell"
+        checks = [
+            Check(
+                "OpenShell Podman machine", "ok", "'openshell' is rootful and running"
+            ),
+            Check("Host folders mounted in VM", "warn", "/Users visible inside the VM"),
+            Check("Sandbox image", "fail", "img not in the cluster"),
+        ]
+        with patch(
+            "openjarvis.cli.doctor_cmd.openshell_preflight", return_value=checks
+        ):
+            results = _check_openshell(config)
+        assert [(r.name, r.status, r.message) for r in results] == [
+            ("OpenShell Podman machine", "ok", "'openshell' is rootful and running"),
+            ("Host folders mounted in VM", "warn", "/Users visible inside the VM"),
+            ("Sandbox image", "fail", "img not in the cluster"),
+        ]

@@ -267,7 +267,9 @@ def chat(
                         system_prompt_config=config.system_prompt,
                     )
 
-                agent = agent_cls(engine, model, **kwargs)
+                from openjarvis.agents.factory import build_agent
+
+                agent = build_agent(agent_cls, engine, model, config=config, **kwargs)
                 from openjarvis.security.runtime import wire_agent_security
 
                 wire_agent_security(

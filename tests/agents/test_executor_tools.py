@@ -14,7 +14,11 @@ from openjarvis.agents.executor import AgentExecutor
 from openjarvis.agents.manager import AgentManager
 from openjarvis.agents.tool_resolver import ResolvedAgentTools
 from openjarvis.connectors.store import KnowledgeStore
-from openjarvis.core.config import MemoryFilesConfig, SystemPromptConfig
+from openjarvis.core.config import (
+    MemoryFilesConfig,
+    SandboxConfig,
+    SystemPromptConfig,
+)
 from openjarvis.core.events import EventBus, EventType
 from openjarvis.core.registry import AgentRegistry, ToolRegistry
 from openjarvis.core.types import Role, ToolResult
@@ -226,6 +230,7 @@ def test_executor_uses_tool_loop_for_non_tool_agent_with_configured_tools(tmp_pa
         agent=SimpleNamespace(default_system_prompt="GLOBAL_DEFAULT"),
         memory_files=MemoryFilesConfig(persona_name="none"),
         system_prompt=SystemPromptConfig(),
+        sandbox=SandboxConfig(),
     )
     manager = AgentManager(db_path=str(tmp_path / "agents.db"))
     agent = manager.create_agent(
@@ -404,6 +409,7 @@ def test_simple_agent_without_tools_keeps_its_custom_system_prompt(tmp_path):
         agent=SimpleNamespace(default_system_prompt="GLOBAL_DEFAULT"),
         memory_files=MemoryFilesConfig(persona_name="none"),
         system_prompt=SystemPromptConfig(),
+        sandbox=SandboxConfig(),
     )
     manager = AgentManager(db_path=str(tmp_path / "agents.db"))
     agent = manager.create_agent(
