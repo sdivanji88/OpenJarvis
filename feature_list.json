@@ -1503,7 +1503,7 @@
       "dependencies": [
         "F-029"
       ],
-      "status": "in_progress",
+      "status": "verifying",
       "design": {
         "status": "agreed",
         "risk": "escalated",
@@ -1513,7 +1513,7 @@
           "RESOLVED: the sandbox does not need the openjarvis_rust extension (core imports and the entrypoint run without it).",
           "Filesystem policy behaviour (untested in the spike)",
           "Per-sandbox CPU / memory limits",
-          "Old openshell/sandbox-from images (~600 MB each) accumulate in the cluster after rebuilds; prune them."
+          "RESOLVED: scripts/build-openshell-image.sh removes older openshell/sandbox-from images from the cluster after a successful build."
         ],
         "decision_refs": [
           "D-029",
@@ -1530,8 +1530,28 @@
         {
           "id": "AC-001",
           "statement": "With [sandbox] runtime = \"openshell\", every agent run (including chat) executes inside an OpenShell sandbox",
-          "status": "pending",
-          "evidence": []
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "OPENJARVIS_CONFIG=/tmp/oj-openshell/config.toml uv run jarvis ask --agent simple \"hi\" 2>&1 | rg -o \"Sandbox oj-\\d+-simple-[0-9a-f]+ exited 1: Agent failed: EngineConnectionError: vllm engine at https://inference.local\"",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:27:40Z",
+              "note": "Live, dedicated rootful 'openshell' machine, image openshell/sandbox-from:1793628918. The agent ran inside sandbox oj-31417-simple-c2e0e0f8 and called the gateway, which returned 503 'cluster inference is not configured' (model routing is F-031, per D-045). No oj- sandboxes left afterwards."
+            },
+            {
+              "type": "manual",
+              "observation": "jarvis chat --agent simple driven through a pseudo-terminal (script -q /dev/null) with the same config: the chat turn ran in sandbox oj-31589-simple-25963deb and failed at inference.local with the same 503; no oj- sandboxes left afterwards.",
+              "timestamp": "2026-11-02T14:29:30Z"
+            },
+            {
+              "type": "command",
+              "command": "uv run pytest tests/agents/test_factory.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:22:58Z",
+              "note": "Guard test: every agent construction site (sdk, ask, chat, serve, orchestrator, executor, hybrid runner) goes through build_agent, which wraps in SandboxedAgent when the runtime is openshell. Also covered by scripts/test.sh (9257 passed)."
+            }
+          ]
         },
         {
           "id": "AC-002",
@@ -1592,29 +1612,96 @@
         {
           "id": "AC-006",
           "statement": "With the gateway stopped, the Podman machine not rootful, or the image missing, an agent run is refused with a clear error and no agent code runs on the host",
-          "status": "pending",
-          "evidence": []
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "OPENJARVIS_CONFIG=/tmp/oj-openshell/missing-image.toml uv run jarvis ask --agent simple \"hi\" 2>&1 | rg \"^OpenShell is not ready: Sandbox image: openshell/sandbox-from:0000000000 not in the cluster; run scripts/build-openshell-image.sh\"",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:31:00Z",
+              "note": "Live missing image: refused in 2.9 s with the build hint; no sandbox was created."
+            },
+            {
+              "type": "manual",
+              "observation": "Live gateway stopped (openshell gateway stop): jarvis ask printed 'OpenShell is not ready: OpenShell gateway: ... Connection refused; Sandbox image: cannot check: gateway not connected' with no traceback (fixed in 977c12be: shutdown skipped when pre-flight never passed, image no longer blamed). After podman --connection openshell-root start openshell-cluster-openshell, the next run executed in a sandbox without restarting OpenJarvis, and the image survived the restart.",
+              "timestamp": "2026-11-02T14:20:00Z"
+            },
+            {
+              "type": "command",
+              "command": "uv run pytest tests/sandbox/test_openshell_runner.py tests/sandbox/test_openshell_preflight.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:22:58Z",
+              "note": "Non-rootful machine, stopped machine, missing machine, gateway down and missing image all refuse; runs never fall back to the host; runs recover once pre-flight passes."
+            }
+          ]
         },
         {
           "id": "AC-007",
           "statement": "`jarvis doctor` reports the dedicated Podman machine (rootful, no host folders mounted), gateway status, and whether the sandbox image is present",
-          "status": "pending",
-          "evidence": []
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "OPENJARVIS_CONFIG=/tmp/oj-openshell/config.toml uv run jarvis doctor 2>&1 | rg -c \"✓\\s+│ (OpenShell Podman machine|Host folders mounted in VM|OpenShell gateway|Sandbox image)\"",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:30:30Z",
+              "note": "Prints 4: dedicated machine rootful and running, no host folders mounted, gateway connected, image present."
+            },
+            {
+              "type": "command",
+              "command": "OPENJARVIS_CONFIG=/tmp/oj-openshell/default-machine.toml uv run jarvis doctor 2>&1 | rg \"OpenShell Podman machine|Host folders\"",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:30:30Z",
+              "note": "Pointed at podman-machine-default: fail \"'podman-machine-default' is stopped\" and warn listing /Users, /private, /var/folders mounted (mounts are a warning per the user's choice)."
+            },
+            {
+              "type": "command",
+              "command": "uv run pytest tests/cli/test_doctor_cmd.py tests/sandbox/test_openshell_preflight.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:22:58Z",
+              "note": "Doctor rows map each pre-flight check; rootless, missing, stopped machine and mounted folders covered."
+            }
+          ]
         },
         {
           "id": "AC-008",
           "statement": "No sandboxes with the OpenJarvis name prefix remain after the host process shuts down or restarts",
-          "status": "pending",
-          "evidence": []
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "manual",
+              "observation": "Live, three real processes each starting the shared runner with pool_sizes simple=1: process A (pid 24996) warmed oj-24996-simple-3871ee35 and was killed with SIGKILL; process C (pid 25032) started and deleted A's orphan, leaving its own oj-25032-simple-6b5f0322; process B started and exited normally while C was alive and left C's sandbox alone; when C exited normally, no oj- sandboxes remained. Note: the owner PID is the Python process; killing only a 'uv run' wrapper leaves the Python child (and its sandbox) alive until it exits.",
+              "timestamp": "2026-11-02T14:16:30Z"
+            },
+            {
+              "type": "command",
+              "command": "uv run pytest tests/sandbox/test_openshell_pool.py tests/sandbox/test_openshell_runner.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:22:58Z",
+              "note": "Startup cleanup deletes only sandboxes with no owner PID, a dead owner, or our own PID; shutdown drains the pool."
+            }
+          ]
         }
       ],
       "verification": {
-        "commands": [],
-        "manual_checks": [],
+        "commands": [
+          "uv run pytest tests/sandbox tests/agents/test_factory.py tests/cli/test_doctor_cmd.py -q",
+          "scripts/test.sh",
+          "scripts/integration.sh",
+          "scripts/smoke.sh",
+          "scripts/security.sh",
+          "scripts/architecture-review.sh",
+          "scripts/validate-harness.sh"
+        ],
+        "manual_checks": [
+          "jarvis ask / jarvis chat with runtime = openshell run inside an oj- sandbox (temp config)",
+          "Gateway stopped and missing image: runs refused, then recover without restart",
+          "SIGKILLed owner's sandbox removed by the next process start; live owners' sandboxes kept"
+        ],
         "last_verified_at": null
       },
       "blocker": null,
-      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md"
+      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md | 2026-11-02: all 8 criteria pass with evidence; gates green except scripts/security.sh, which fails on pip-audit advisories in transitive deps already in uv.lock on the base branch (aiohttp 3.14.3, certifi 2026.1.4, filelock 3.24.2, virtualenv 21.14.5). Not verified until that gate passes."
     },
     {
       "id": "F-031",
