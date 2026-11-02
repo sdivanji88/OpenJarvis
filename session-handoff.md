@@ -32,7 +32,7 @@
     - Evidence for AC-001 and AC-008.
     - The Definition of Done gates.
   - Gateway state:
-    - The inference route points at the **temporary** provider `oj-dev-ollama` (`http://host.openshell.internal:11434/v1`, `qwen3.5:2b`). This stand-in for F-031 bypasses OpenJarvis.
+    - The temporary provider `oj-dev-ollama` was deleted on 2026-11-02, and no providers remain. OpenShell has no command to clear the inference route, so it still names the deleted provider, and sandboxed model calls fail (`engine not reachable at https://inference.local`) until F-031 sets the route.
     - The current image is `openshell/sandbox-from:1793544465`.
 - Full unit suite: 9222 passed. 3 failed in `tests/security/test_data_boundary_audit.py`; they fail the same way without this branch's changes.
 
