@@ -15,6 +15,7 @@ from rich.console import Console
 from rich.table import Table
 
 from openjarvis.core.config import DEFAULT_CONFIG_PATH, load_config
+from openjarvis.sandbox.openshell_preflight import preflight as openshell_preflight
 
 
 @dataclass
@@ -367,6 +368,16 @@ _STATUS_ICONS = {
 }
 
 
+def _check_openshell(config: Any | None) -> List[CheckResult]:
+    """Report the OpenShell sandbox runtime's pre-flight checks, if enabled."""
+    if config is None or config.sandbox.runtime != "openshell":
+        return []
+    return [
+        CheckResult(check.name, check.status, check.detail)
+        for check in openshell_preflight(config.sandbox)
+    ]
+
+
 def _run_all_checks() -> List[CheckResult]:
     """Run all diagnostic checks and return results."""
     checks: List[CheckResult] = []
@@ -381,6 +392,7 @@ def _run_all_checks() -> List[CheckResult]:
     checks.append(_check_speech_backend())
     checks.append(_check_nodejs())
     checks.append(_check_security_profile())
+    checks.extend(_check_openshell(_get_config()))
     return checks
 
 

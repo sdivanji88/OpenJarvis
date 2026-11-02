@@ -34,6 +34,7 @@ from openjarvis.sandbox.openshell_cli import (
 )
 from openjarvis.sandbox.openshell_policy import build_policy, render_policy
 from openjarvis.sandbox.openshell_pool import OpenShell, SandboxPool
+from openjarvis.sandbox.openshell_preflight import Check, failures, preflight
 from openjarvis.sandbox.runner import ContainerRunner
 
 logger = logging.getLogger(__name__)
@@ -64,6 +65,7 @@ class OpenShellRunner:
         pool_sizes: Optional[Mapping[str, int]] = None,
         timeout: float = 300,
         command: str = DEFAULT_COMMAND,
+        preflight: Callable[[], List[Check]] = lambda: [],
     ) -> None:
         self._shell = shell
         self._pool = SandboxPool(shell, image_id=image_id)
@@ -71,17 +73,31 @@ class OpenShellRunner:
         self._pool_sizes = dict(pool_sizes or {})
         self._timeout = timeout
         self._command = command
+        self._preflight = preflight
+        self._ready = False
+        self._start_lock = threading.Lock()
 
     def policy_for(self, agent: str) -> str:
         return render_policy(build_policy(self._allowed_hosts.get(agent, [])))
 
     def start(self) -> None:
-        """Remove sandboxes left by a previous process and warm the pools."""
-        if not self._shell.gateway_ready():
-            raise OpenShellError("OpenShell gateway is not connected")
-        self._pool.cleanup_orphans()
-        for agent, size in self._pool_sizes.items():
-            self._pool.set_size(agent, self.policy_for(agent), size)
+        """Check OpenShell, remove orphaned sandboxes and warm the pools.
+
+        Raises :class:`OpenShellError` if any pre-flight check fails; runs are
+        then refused (and re-checked) until a later check passes.
+        """
+        with self._start_lock:
+            if self._ready:
+                return
+            failed = failures(self._preflight())
+            if failed:
+                raise OpenShellError("; ".join(f"{c.name}: {c.detail}" for c in failed))
+            if not self._shell.gateway_ready():
+                raise OpenShellError("OpenShell gateway is not connected")
+            self._pool.cleanup_orphans()
+            for agent, size in self._pool_sizes.items():
+                self._pool.set_size(agent, self.policy_for(agent), size)
+            self._ready = True
 
     def shutdown(self) -> None:
         self._pool.drain()
@@ -115,6 +131,11 @@ class OpenShellRunner:
         bad_names = [k for k in env or {} if not _ENV_NAME.match(k)]
         if bad_names:
             return _error(f"Invalid environment variable names: {bad_names}", "refused")
+
+        try:
+            self.start()
+        except OpenShellError as exc:
+            return _error(f"OpenShell is not ready: {exc}", "sandbox_unavailable")
 
         payload = dict(input_data)
         if workspace:
@@ -167,6 +188,7 @@ def shared_runner(
     sandbox: SandboxConfig,
     *,
     shell_factory: Optional[Callable[[str], OpenShellRuntime]] = None,
+    checks: Callable[[SandboxConfig], List[Check]] = preflight,
 ) -> Optional[OpenShellRunner]:
     """Return the process-wide runner for ``sandbox``, or None if not OpenShell.
 
@@ -181,6 +203,8 @@ def shared_runner(
         str(sandbox.timeout),
         json.dumps(sandbox.allowed_hosts, sort_keys=True),
         json.dumps(sandbox.pool_sizes, sort_keys=True),
+        sandbox.podman_machine,
+        sandbox.openshell_gateway,
     )
     with _shared_lock:
         runner = _shared.get(key)
@@ -193,6 +217,7 @@ def shared_runner(
             allowed_hosts=sandbox.allowed_hosts,
             pool_sizes=sandbox.pool_sizes,
             timeout=sandbox.timeout,
+            preflight=lambda: checks(sandbox),
         )
         try:
             runner.start()

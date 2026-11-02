@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from typing import Callable, Dict, List, Optional
 
@@ -11,6 +12,7 @@ import pytest
 from openjarvis.core.config import SandboxConfig
 from openjarvis.sandbox.openshell_cli import OpenShellError, SandboxTimeout
 from openjarvis.sandbox.openshell_policy import build_policy, render_policy
+from openjarvis.sandbox.openshell_preflight import Check
 from openjarvis.sandbox.openshell_runner import OpenShellRunner, shared_runner
 
 START = "---OPENJARVIS_OUTPUT_START---"
@@ -145,6 +147,33 @@ class TestFailClosed:
         assert result["error"] is True
         assert shell.execs == []
 
+    def test_failed_preflight_refuses_start_and_creates_nothing(self, shell):
+        bad = [Check("Sandbox image", "fail", "img not in the cluster")]
+        runner = make_runner(shell, pool_sizes={"chat": 1}, preflight=lambda: bad)
+        with pytest.raises(OpenShellError, match="img not in the cluster"):
+            runner.start()
+        assert shell.sandboxes == {}
+
+    def test_run_is_refused_while_preflight_fails(self, shell):
+        bad = [Check("OpenShell Podman machine", "fail", "not rootful")]
+        runner = make_runner(shell, preflight=lambda: bad)
+        result = runner.run(request())
+        assert result["error_type"] == "sandbox_unavailable"
+        assert "not rootful" in result["content"]
+        assert shell.execs == []
+
+    def test_runs_recover_once_preflight_passes(self, shell):
+        results = [[Check("OpenShell gateway", "fail", "down")], []]
+        runner = make_runner(shell, preflight=lambda: results.pop(0))
+        assert runner.run(request())["error"] is True
+        assert runner.run(request()) == {"content": "ok:hi"}
+
+    def test_warnings_do_not_refuse_runs(self, shell):
+        warn = [Check("Host folders mounted in VM", "warn", "/Users")]
+        runner = make_runner(shell, preflight=lambda: warn)
+        runner.start()
+        assert runner.run(request()) == {"content": "ok:hi"}
+
     def test_start_refuses_when_the_gateway_is_down(self, shell):
         shell.ready = False
         with pytest.raises(OpenShellError, match="gateway"):
@@ -158,7 +187,7 @@ class TestLifecycle:
         names = list(shell.sandboxes)
         assert "oj-chat-old" not in names
         assert "other" in names
-        assert len([n for n in names if n.startswith("oj-chat-")]) == 1
+        assert len([n for n in names if n.startswith(f"oj-{os.getpid()}-chat-")]) == 1
 
     def test_run_uses_the_warm_sandbox(self, shell):
         runner = make_runner(shell, pool_sizes={"chat": 1})
@@ -201,17 +230,39 @@ class TestSharedRunner:
             return shells[-1]
 
         config = self.config(pool_sizes={"chat": 1})
-        first = shared_runner(config, shell_factory=make_shell)
-        second = shared_runner(config, shell_factory=make_shell)
+        first = shared_runner(config, shell_factory=make_shell, checks=lambda s: [])
+        second = shared_runner(config, shell_factory=make_shell, checks=lambda s: [])
         assert first is second
         assert len(shells) == 1
-        assert [n for n in shells[0].sandboxes if n.startswith("oj-chat-")]
+        assert [
+            n for n in shells[0].sandboxes if n.startswith(f"oj-{os.getpid()}-chat-")
+        ]
         first.shutdown()
+
+    def test_preflight_checks_are_applied_to_the_configured_machine(self):
+        seen = []
+
+        def checks(sandbox):
+            seen.append(sandbox.podman_machine)
+            return [Check("OpenShell Podman machine", "fail", "not rootful")]
+
+        shell = FakeShell()
+        runner = shared_runner(
+            self.config(podman_machine="vm1"),
+            shell_factory=lambda image: shell,
+            checks=checks,
+        )
+        result = runner.run(request())
+        assert seen[0] == "vm1"
+        assert "not rootful" in result["content"]
+        assert shell.execs == []
 
     def test_gateway_down_still_returns_a_runner_that_fails_closed(self):
         shell = FakeShell()
         shell.ready = False
         shell.create_error = "connection refused"
-        runner = shared_runner(self.config(), shell_factory=lambda image: shell)
+        runner = shared_runner(
+            self.config(), shell_factory=lambda image: shell, checks=lambda s: []
+        )
         result = runner.run(request())
         assert result["error_type"] == "sandbox_unavailable"

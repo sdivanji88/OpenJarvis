@@ -1561,6 +1561,9 @@ class SandboxConfig:
     # "host:port"), and how many sandboxes to keep warm per agent.
     allowed_hosts: Dict[str, List[str]] = field(default_factory=dict)
     pool_sizes: Dict[str, int] = field(default_factory=dict)
+    # The dedicated rootful Podman machine and the OpenShell gateway on it.
+    podman_machine: str = "openshell"
+    openshell_gateway: str = "openshell"
     wasm_fuel_limit: int = 1_000_000
     wasm_memory_limit_mb: int = 256
 

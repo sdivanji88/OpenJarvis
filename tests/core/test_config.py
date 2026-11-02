@@ -472,6 +472,11 @@ class TestSandboxConfig:
         assert sc.allowed_hosts == {}
         assert sc.pool_sizes == {}
 
+    def test_openshell_machine_and_gateway_default_to_openshell(self) -> None:
+        sc = SandboxConfig()
+        assert sc.podman_machine == "openshell"
+        assert sc.openshell_gateway == "openshell"
+
     def test_loads_openshell_per_agent_settings_from_toml(self, tmp_path: Path) -> None:
         toml_file = tmp_path / "config.toml"
         toml_file.write_text(

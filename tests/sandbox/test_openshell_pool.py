@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import threading
 import time
 from typing import Dict, List
@@ -72,11 +73,11 @@ class TestClaim:
     def test_sandbox_names_carry_the_prefix_and_are_unique(self, pool):
         names = {pool.claim("digest", POLICY_A).name for _ in range(5)}
         assert len(names) == 5
-        assert all(n.startswith("oj-digest-") for n in names)
+        assert all(n.startswith(f"oj-{os.getpid()}-digest-") for n in names)
 
     def test_agent_ids_are_made_safe_for_sandbox_names(self, pool):
         name = pool.claim("Morning_Digest", POLICY_A).name
-        assert name.startswith("oj-morning-digest-")
+        assert name.startswith(f"oj-{os.getpid()}-morning-digest-")
 
 
 class TestBackgroundRefill:
@@ -121,6 +122,16 @@ class TestLifecycle:
         shell = FakeOpenShell(existing=["oj-chat-old1", "someone-else"])
         SandboxPool(shell, image_id="sha256:aaa").cleanup_orphans()
         assert list(shell.sandboxes) == ["someone-else"]
+
+    def test_cleanup_keeps_sandboxes_of_other_running_processes(self):
+        shell = FakeOpenShell(
+            existing=["oj-100-chat-a", "oj-200-chat-b", "oj-300-chat-c"]
+        )
+        pool = SandboxPool(
+            shell, image_id="sha256:aaa", pid=100, is_alive=lambda pid: pid == 200
+        )
+        pool.cleanup_orphans()
+        assert list(shell.sandboxes) == ["oj-200-chat-b"]
 
     def test_drain_deletes_all_warm_sandboxes(self, pool, shell):
         pool.set_size("chat", POLICY_A, 2)

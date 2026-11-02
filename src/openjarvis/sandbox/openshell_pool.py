@@ -10,11 +10,12 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import re
 import threading
 import uuid
 from dataclasses import dataclass
-from typing import Dict, List, Protocol, Tuple
+from typing import Callable, Dict, List, Optional, Protocol, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +43,38 @@ def _slug(agent: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", agent.lower()).strip("-") or "agent"
 
 
+def _pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+_OWNER_RE = re.compile(rf"^{PREFIX}(\d+)-")
+
+
 class SandboxPool:
-    def __init__(self, shell: OpenShell, *, image_id: str) -> None:
+    """Sandbox names are ``oj-<owner pid>-<agent>-<random>``.
+
+    Several OpenJarvis processes (server, scheduler, CLI) share one gateway,
+    so orphan cleanup only removes sandboxes whose owning process is gone.
+    """
+
+    def __init__(
+        self,
+        shell: OpenShell,
+        *,
+        image_id: str,
+        pid: Optional[int] = None,
+        is_alive: Callable[[int], bool] = _pid_alive,
+    ) -> None:
         self._shell = shell
         self._image_id = image_id
+        self._pid = os.getpid() if pid is None else pid
+        self._is_alive = is_alive
         self._lock = threading.Lock()
         self._warm: Dict[Slot, List[Sandbox]] = {}
         self._pending: Dict[Slot, int] = {}
@@ -96,8 +125,15 @@ class SandboxPool:
 
     def cleanup_orphans(self) -> None:
         for name in self._shell.list_names():
-            if name.startswith(PREFIX):
+            if name.startswith(PREFIX) and self._is_orphan(name):
                 self._shell.delete(name)
+
+    def _is_orphan(self, name: str) -> bool:
+        match = _OWNER_RE.match(name)
+        if match is None:
+            return True
+        owner = int(match.group(1))
+        return owner == self._pid or not self._is_alive(owner)
 
     def _slot(self, agent: str, policy: str) -> Slot:
         key = self.key(policy)
@@ -106,7 +142,7 @@ class SandboxPool:
 
     def _create(self, slot: Slot) -> Sandbox:
         agent, key = slot
-        name = f"{PREFIX}{_slug(agent)}-{uuid.uuid4().hex[:8]}"
+        name = f"{PREFIX}{self._pid}-{_slug(agent)}-{uuid.uuid4().hex[:8]}"
         self._shell.create(name, self._policies[key])
         return Sandbox(name=name, agent=agent, key=key)
 
