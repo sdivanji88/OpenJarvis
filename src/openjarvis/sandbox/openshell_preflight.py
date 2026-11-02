@@ -109,11 +109,12 @@ def _image_check(sandbox: SandboxConfig, run: Run) -> Check:
 
 
 def preflight(sandbox: SandboxConfig, *, run: Run = subprocess.run) -> List[Check]:
-    return [
-        *_machine_checks(sandbox, run),
-        _gateway_check(run),
-        _image_check(sandbox, run),
-    ]
+    gateway = _gateway_check(run)
+    if gateway.status == "ok":
+        image = _image_check(sandbox, run)
+    else:
+        image = Check("Sandbox image", "fail", "cannot check: gateway not connected")
+    return [*_machine_checks(sandbox, run), gateway, image]
 
 
 __all__ = ["Check", "failures", "preflight"]

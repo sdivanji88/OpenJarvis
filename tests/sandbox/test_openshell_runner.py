@@ -202,6 +202,17 @@ class TestLifecycle:
         runner.shutdown()
         assert not [n for n in shell.sandboxes if n.startswith("oj-")]
 
+    def test_shutdown_skips_openshell_when_never_started(self, shell):
+        bad = [Check("OpenShell gateway", "fail", "down")]
+        runner = make_runner(shell, preflight=lambda: bad)
+        runner.run(request())
+
+        def unreachable():
+            raise AssertionError("shutdown contacted OpenShell")
+
+        shell.list_names = unreachable
+        runner.shutdown()
+
     def test_close_shuts_down(self, shell):
         runner = make_runner(shell, pool_sizes={"chat": 1})
         runner.start()

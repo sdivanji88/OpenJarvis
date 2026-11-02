@@ -75,6 +75,7 @@ class OpenShellRunner:
         self._command = command
         self._preflight = preflight
         self._ready = False
+        self._touched = False
         self._start_lock = threading.Lock()
 
     def policy_for(self, agent: str) -> str:
@@ -94,12 +95,17 @@ class OpenShellRunner:
                 raise OpenShellError("; ".join(f"{c.name}: {c.detail}" for c in failed))
             if not self._shell.gateway_ready():
                 raise OpenShellError("OpenShell gateway is not connected")
+            self._touched = True
             self._pool.cleanup_orphans()
             for agent, size in self._pool_sizes.items():
                 self._pool.set_size(agent, self.policy_for(agent), size)
             self._ready = True
 
     def shutdown(self) -> None:
+        # A runner that never got past pre-flight created nothing, and
+        # OpenShell is likely down; contacting it would only log noise.
+        if not self._touched:
+            return
         self._pool.drain()
         try:
             self._pool.cleanup_orphans()

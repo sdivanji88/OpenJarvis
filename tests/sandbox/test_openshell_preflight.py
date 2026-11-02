@@ -102,6 +102,15 @@ def test_gateway_not_connected_fails(run):
     assert checks_by_name(run)["OpenShell gateway"].status == "fail"
 
 
+def test_image_is_not_blamed_when_the_gateway_is_down(run):
+    run.gateway_output = "Status: Disconnected\n"
+    check = checks_by_name(run)["Sandbox image"]
+    assert check.status == "fail"
+    assert "gateway" in check.detail
+    assert "build-openshell-image.sh" not in check.detail
+    assert not [c for c in run.calls if "crictl" in c]
+
+
 def test_missing_image_fails_with_the_build_hint(run):
     run.present_images = []
     check = checks_by_name(run)["Sandbox image"]

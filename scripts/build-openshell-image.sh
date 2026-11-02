@@ -9,6 +9,10 @@
 #
 #   scripts/build-openshell-image.sh            # stage and build
 #   scripts/build-openshell-image.sh --stage    # stage only (for a local podman build)
+#
+# DOCKER_HOST must point at the OpenShell Podman machine's socket.
+# OPENSHELL_PODMAN_MACHINE and OPENSHELL_GATEWAY (both default "openshell")
+# match [sandbox] podman_machine and openshell_gateway.
 
 set -euo pipefail
 
@@ -47,6 +51,15 @@ openshell sandbox create --name "$NAME" --from "$CONTEXT" --no-tty --no-auto-pro
   2>&1 | tee "$LOG"
 IMAGE=$(sed 's/\x1b\[[0-9;]*m//g' "$LOG" | grep -o 'openshell/sandbox-from:[0-9]*' | tail -1)
 [ -n "$IMAGE" ] || { echo "Could not find the built image tag in $LOG" >&2; exit 1; }
+
+# Every build pushes a new ~600 MB tag; remove the older ones from the
+# cluster. crictl refuses images that a live sandbox still uses.
+CRICTL=(podman --connection "${OPENSHELL_PODMAN_MACHINE:-openshell}-root"
+  exec "openshell-cluster-${OPENSHELL_GATEWAY:-openshell}" crictl)
+for old in $("${CRICTL[@]}" images 2>/dev/null \
+  | awk -v keep="${IMAGE#*:}" '$1 == "docker.io/openshell/sandbox-from" && $2 != keep { print $1 ":" $2 }'); do
+  "${CRICTL[@]}" rmi "$old" >/dev/null 2>&1 && echo "Removed old image $old" || true
+done
 echo
 echo "Image ready. Set it in ~/.openjarvis/config.toml:"
 echo "  [sandbox]"
