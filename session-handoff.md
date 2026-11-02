@@ -2,11 +2,31 @@
 
 > Read this at the start of every session. Update it before ending every session.
 
-**Last updated:** 2026-11-01T14:15:00Z
+**Last updated:** 2026-11-02T14:50:00Z
 
 ---
 
-## Latest session (2026-11-01, later): F-030 started test-first; F-029 verified
+## Latest session (2026-11-02): F-030 verified
+
+- **F-030 is `verified`.** All 8 criteria pass with evidence, and all hard gates exit 0 on the final tree; see `feature_list.json`. It is on branch `openshell-sandbox` in [PR #1](https://github.com/sdivanji88/OpenJarvis/pull/1).
+- Added this session:
+  - `sandbox/openshell_preflight.py`. Runs are refused when the machine is missing, rootless or stopped, the gateway isn't connected, or the image isn't in the cluster. Mounted host folders only warn (D-046).
+  - Pre-flight runs again on every attempt, so fixing the problem is enough.
+  - The same checks appear as rows in `jarvis doctor`.
+  - Sandbox names carry the owner PID (`oj-<pid>-<agent>-<hex>`). At startup a process deletes only sandboxes whose owner is dead, so it no longer kills the scheduler's sandboxes.
+  - The image build script removes older images.
+  - The user guide is at `docs/user-guide/openshell-sandbox.md` and is in the mkdocs nav.
+  - D-047: `uv.lock` patched for aiohttp, certifi, filelock and virtualenv advisories. Python 3.10 keeps filelock 4.1.0.
+- **Machine state (D-046 migration):**
+  - The gateway now runs on a dedicated rootful Podman machine `openshell` (4 CPU, 8 GiB, no host mounts). `podman-machine-default` is **stopped**; only one machine runs at a time on macOS. The old gateway on the default machine was destroyed.
+  - `export DOCKER_HOST=unix:///var/folders/2h/6kqfgztx11j4bpk1x3m21wp00000gn/T/podman/openshell-api.sock` before `openshell` commands.
+  - The user must start machines from their own terminal; one started from an agent shell dies with the command.
+  - To restart a stopped gateway, run `podman --connection openshell-root start openshell-cluster-openshell` (about 2 min). Non-interactive `openshell gateway start` doesn't start it, and `--recreate` wipes the image.
+  - Image: `openshell/sandbox-from:1793630675`. The gateway has no inference route, so sandboxed runs get 503 "cluster inference is not configured" until F-031.
+- The real `~/.openjarvis/config.toml` is **unchanged** (runtime not openshell), so the 07:00 digest keeps working. Live checks used `OPENJARVIS_CONFIG=/tmp/oj-openshell/config.toml`.
+- **Next:** F-031 (gateway key and pass-through model endpoint, D-043).
+
+## Earlier session (2026-11-01, later): F-030 started test-first; F-029 verified
 
 - **F-029 is `verified`** (developer sign-off on FINDINGS).
 - **F-030 is `in_progress`** on branch `openshell-sandbox`, in [PR #1](https://github.com/sdivanji88/OpenJarvis/pull/1). The PR is on the fork with base `morning-digest`; change the base to `main` once `morning-digest` merges.
@@ -58,7 +78,7 @@
 
 ### Next step — start here
 
-Continue F-030 test-first. Next: the in-sandbox entrypoint and the slim image, then the `jarvis doctor` checks and the dedicated Podman machine guidance.
+F-030 is verified (see the latest session above). Start F-031: the gateway key and the pass-through model endpoint (D-043).
 
 ---
 

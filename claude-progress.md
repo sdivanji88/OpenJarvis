@@ -240,3 +240,30 @@ Both are folded into F-025's summary and its criteria AC-002 and AC-004.
 - The other Definition of Done gates have not been run yet. F-030 is not complete.
 
 **Next session**: F-030 in-sandbox entrypoint and slim image, then doctor checks.
+
+### Session 10 -- 2026-11-02T14:50:00Z (F-030 completed and verified)
+
+**What was done**:
+- Pre-flight checks (`sandbox/openshell_preflight.py`), shown as `jarvis doctor` rows. A missing, rootless or stopped machine, a disconnected gateway, or a missing image refuses runs; runs re-check and recover without a restart. Mounted host folders only warn (D-046, developer's choice).
+- Sandbox names carry the owner PID. Startup cleanup removes only sandboxes with a dead owner, so other live processes keep theirs.
+- Migrated the gateway to a dedicated rootful `openshell` Podman machine with no host mounts (D-046). The image was rebuilt there; the build script now removes older images.
+- User guide `docs/user-guide/openshell-sandbox.md`, added to the mkdocs nav.
+- Fixes found by live checks:
+  - With OpenShell down, shutdown logged a traceback; it now skips cleanup when pre-flight never passed.
+  - The image row blamed the image when the gateway was down; it now says it cannot check.
+- Patched dependency advisories inherited from the base branch (D-047) and rebuilt the image as `openshell/sandbox-from:1793630675`.
+- Live evidence:
+  - `jarvis ask` and `jarvis chat` ran inside `oj-` sandboxes.
+  - Runs were refused with the gateway stopped and with the image missing, and recovered after a gateway restart.
+  - Doctor showed 4 ok rows on the dedicated machine, and a fail plus a mounts warning on the default machine.
+  - A SIGKILLed owner's sandbox was removed at the next start, while the live owner's sandbox was kept.
+
+**Gates** (final tree, Cartesia env unset):
+- Hard gates, all exit 0:
+  - security: pip-audit no known vulnerabilities, bandit, gitleaks.
+  - test: 9257 passed.
+  - integration: 50 passed.
+  - smoke, architecture-review, validate-harness.
+- Soft gates: lint is clean. Code review flagged the filelock major bump; the Python 3.10 unit failure set is identical with the old and new lock.
+
+**Next session**: F-031 (gateway key and pass-through model endpoint, D-043).

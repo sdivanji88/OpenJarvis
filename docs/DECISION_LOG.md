@@ -432,3 +432,21 @@ Entry format:
 - **Decision:** Wire the runner into every agent construction path now. With `runtime = "openshell"`, runs fail closed with a clear error until the entrypoint and F-031 land; the default runtime is unchanged, so nothing changes for users who have not opted in.
 - **Supersedes:** none
 - **Recorded in:** feature_list.json F-030
+
+## D-046 — Move the gateway to a dedicated machine; mounted host folders warn rather than refuse
+
+- **Date:** 2026-11-02
+- **Scope:** feature F-030
+- **Premise:** Completing F-030, the developer was shown that the gateway ran on `podman-machine-default`, which mounts `/Users`, `/private` and `/var/folders` read-write into the VM, so code that escaped a sandbox could reach the home directory (the D-042 threat). Options offered for the machine: migrate now to a new rootful machine with no mounts, or keep the default machine and only report it. Options for the doctor/pre-flight policy on mounts: refuse runs, or warn.
+- **Decision:** Migrate: a rootful `openshell` machine created with `--volume ""`, gateway rebuilt there, image rebuilt. Mounted host folders are a `jarvis doctor` warning and do not refuse runs; a missing, rootless or stopped machine, a disconnected gateway and a missing image do refuse.
+- **Supersedes:** none (implements D-042)
+- **Recorded in:** feature_list.json F-030; docs/user-guide/openshell-sandbox.md
+
+## D-047 — Patch the inherited dependency advisories on the F-030 branch
+
+- **Date:** 2026-11-02
+- **Scope:** feature F-030 (uv.lock)
+- **Premise:** The security gate failed on 27 pip-audit advisories in aiohttp, certifi, filelock and virtualenv, all already in `uv.lock` on the base branch and unrelated to F-030. The sandbox image is built from the same lock, so it shipped the vulnerable aiohttp. Options offered: upgrade the four packages on this branch, fix them in a separate PR against the base, or leave F-030 unverified.
+- **Decision:** Upgrade only those four packages on this branch (`uv lock --upgrade-package`), rerun every gate and rebuild the image. filelock 4.2.x needs Python 3.11, so Python 3.10 keeps filelock 4.1.0 and the advisories fixed in 4.2.1; accepted because CI and the image use 3.12/3.13 and the 3.10 unit failure set is unchanged.
+- **Supersedes:** none
+- **Recorded in:** feature_list.json F-030

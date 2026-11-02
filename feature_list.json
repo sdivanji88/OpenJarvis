@@ -1503,7 +1503,7 @@
       "dependencies": [
         "F-029"
       ],
-      "status": "verifying",
+      "status": "verified",
       "design": {
         "status": "agreed",
         "risk": "escalated",
@@ -1523,7 +1523,11 @@
           "D-036",
           "D-040",
           "D-041",
-          "D-042"
+          "D-042",
+          "D-044",
+          "D-045",
+          "D-046",
+          "D-047"
         ]
       },
       "acceptance_criteria": [
@@ -1698,10 +1702,10 @@
           "Gateway stopped and missing image: runs refused, then recover without restart",
           "SIGKILLed owner's sandbox removed by the next process start; live owners' sandboxes kept"
         ],
-        "last_verified_at": null
+        "last_verified_at": "2026-11-02T14:44:25Z"
       },
       "blocker": null,
-      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md | 2026-11-02: all 8 criteria pass with evidence; gates green except scripts/security.sh, which fails on pip-audit advisories in transitive deps already in uv.lock on the base branch (aiohttp 3.14.3, certifi 2026.1.4, filelock 3.24.2, virtualenv 21.14.5). Not verified until that gate passes."
+      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md | 2026-11-02: verified. All 8 criteria pass with evidence. Hard gates exit 0 on the final tree (73f92549, uv.lock patched per D-047): security (pip-audit: no known vulnerabilities; bandit; gitleaks) 14:41:55Z, test 9257 passed 14:43:17Z, integration 50 passed 14:43:25Z, smoke 14:43:27Z, architecture-review 14:43:47Z, validate-harness 14:43:48Z; soft gates lint clean, code-review reviewed (filelock major bump: py3.10 failure set identical old vs new lock). Sandbox image rebuilt from the patched lock: openshell/sandbox-from:1793630675, live doctor 4 ok rows and jarvis ask ran in oj-40232-simple-28dc8fb5. Known limit: Python 3.10 keeps filelock 4.1.0. Model access inside sandboxes is F-031."
     },
     {
       "id": "F-031",
