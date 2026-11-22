@@ -267,3 +267,14 @@ Both are folded into F-025's summary and its criteria AC-002 and AC-004.
 - Soft gates: lint is clean. Code review flagged the filelock major bump; the Python 3.10 unit failure set is identical with the old and new lock.
 
 **Next session**: F-031 (gateway key and pass-through model endpoint, D-043).
+
+### Session -- 2026-11-22
+
+**Goal**: Merge upstream OpenJarvis into openshell-sandbox.
+
+**What was done**:
+- Fetched and merged `upstream/main` (163 commits) into `openshell-sandbox`; resolved 9 conflicts; regenerated `uv.lock`.
+- Preserved OpenShell doctor/preflight, digest shared playback, and tool restriction; took upstream probe-remote doctor, Cartesia model defaults, prompt builder wiring, and Windows PortAudio via `speech/playback.py`.
+- Focused tests on conflicted areas: 84 passed. Merge commit `5f500bbe` pushed; PR #1 base set to `main`.
+
+**Next session**: Resume F-031 if still planned.

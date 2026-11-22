@@ -2,11 +2,18 @@
 
 > Read this at the start of every session. Update it before ending every session.
 
-**Last updated:** 2026-11-02T14:50:00Z
+**Last updated:** 2026-11-22T12:40:00Z
 
 ---
 
-## Latest session (2026-11-02): F-030 verified
+## Latest session (2026-11-22): merge upstream/main
+
+- Merged `upstream/main` into `openshell-sandbox` (`5f500bbe`); pushed to origin. PR #1 retargeted to `main`.
+- Conflict resolutions kept OpenShell work and folded in upstream: doctor OpenShell checks + `--probe-remote`; optional credentials (Firecrawl/FX + Cartesia); orchestrator `_restrict_tools` + SystemPromptBuilder; Windows PortAudio fallback in `speech/playback.py`; upstream Cartesia `sonic-3` / env model defaults.
+- Focused conflict-area tests: 84 passed.
+- **Next:** continue F-031 if still planned.
+
+## Earlier session (2026-11-02): F-030 verified
 
 - **F-030 is `verified`.** All 8 criteria pass with evidence, and all hard gates exit 0 on the final tree; see `feature_list.json`. It is on branch `openshell-sandbox` in [PR #1](https://github.com/sdivanji88/OpenJarvis/pull/1).
 - Added this session:
