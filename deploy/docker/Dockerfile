@@ -9,13 +9,14 @@ FROM node:22.23.0-slim@sha256:d9f850096136edbc402debdd8729579a288aac64574ada0ff4
 ARG OPENJARVIS_LEADERBOARD_PUBLIC_ANON=
 
 WORKDIR /frontend
-COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm ci --ignore-scripts 2>/dev/null || npm install
+COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
+RUN npm install --global "$(node -p 'require("./package.json").packageManager')" && \
+    npm ci --ignore-scripts
 COPY frontend/ .
 RUN VITE_SUPABASE_ANON_KEY="${OPENJARVIS_LEADERBOARD_PUBLIC_ANON}" npm run build
 
 # Stage 2: Build Python package
-FROM python:3.12.13-slim-bookworm@sha256:76d4b7b6305788c6b4c6a19d6a22a3921bf802e9af4d5e1e5bd771208dba74bf AS builder
+FROM python:3.12.16-slim-bookworm@sha256:935c3c5b12357a7e10caa9c1e6ca5692344d97cf229832ef584be2cec9fc03df AS builder
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends build-essential ca-certificates curl && \
@@ -25,8 +26,8 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
         sh -s -- -y --profile minimal --default-toolchain none && \
-    rustup toolchain install 1.88 --profile minimal && \
-    rustup default 1.88
+    rustup toolchain install 1.89 --profile minimal && \
+    rustup default 1.89
 
 WORKDIR /app
 
@@ -47,6 +48,7 @@ COPY src/ src/
 COPY rust/ rust/
 COPY scripts/install scripts/install
 COPY deploy/windows deploy/windows
+COPY configs/openjarvis/examples configs/openjarvis/examples
 
 # Copy built frontend into the server static directory
 COPY --from=frontend /src/openjarvis/server/static src/openjarvis/server/static/
@@ -63,7 +65,7 @@ RUN uv pip install --system --no-deps . && \
     rm -rf /tmp/openjarvis-rust-wheel rust
 
 # Stage 3: Runtime
-FROM python:3.12.13-slim-bookworm@sha256:76d4b7b6305788c6b4c6a19d6a22a3921bf802e9af4d5e1e5bd771208dba74bf
+FROM python:3.12.16-slim-bookworm@sha256:935c3c5b12357a7e10caa9c1e6ca5692344d97cf229832ef584be2cec9fc03df
 
 COPY --from=builder /usr/local /usr/local
 COPY --from=builder /app /app

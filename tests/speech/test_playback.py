@@ -75,8 +75,12 @@ class TestPlayAudio:
         [FileNotFoundError("missing"), subprocess.CalledProcessError(1, "x")],
         ids=["not-installed", "player-failed"],
     )
-    def test_returns_false_when_nothing_works(self, fake_run, exc):
+    def test_returns_false_when_nothing_works(self, fake_run, exc, monkeypatch):
         run = fake_run(_all_fail(exc))
+        monkeypatch.setattr(
+            "openjarvis.speech.voice_io.play_audio_file",
+            lambda path: (_ for _ in ()).throw(RuntimeError("no device")),
+        )
 
         assert play_audio("clip.wav") is False
         assert [argv[0] for argv, _ in run.calls] == [
@@ -85,6 +89,16 @@ class TestPlayAudio:
             "paplay",
             "aplay",
         ]
+
+    def test_falls_back_to_in_process_player(self, fake_run, monkeypatch):
+        from unittest.mock import MagicMock
+
+        fake_run(_all_fail(FileNotFoundError("missing")))
+        fallback = MagicMock()
+        monkeypatch.setattr("openjarvis.speech.voice_io.play_audio_file", fallback)
+
+        assert play_audio("digest.mp3") is True
+        fallback.assert_called_once()
 
     def test_timeout_returns_false_without_replaying(self, fake_run):
         run = fake_run({"afplay": subprocess.TimeoutExpired("afplay", 900)})

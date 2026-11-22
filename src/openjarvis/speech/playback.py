@@ -48,8 +48,22 @@ def play_audio(path: Union[str, Path]) -> bool:
             return False
         except (OSError, subprocess.CalledProcessError):
             continue
-    logger.warning("No audio player could play %s", path)
-    return False
+
+    # Native Windows ships none of the players above (aplay/afplay/paplay are
+    # Unix-only and ffplay needs a separate FFmpeg install), so fall back to
+    # in-process PortAudio playback — the same path `jarvis chat --voice` uses.
+    try:
+        from openjarvis.speech.voice_io import play_audio_file
+
+        play_audio_file(path)
+        return True
+    except Exception as exc:
+        logger.warning(
+            "Audio playback failed (%s). Check the audio file, output device, "
+            "and speech dependencies.",
+            type(exc).__name__,
+        )
+        return False
 
 
 __all__ = ["play_audio"]

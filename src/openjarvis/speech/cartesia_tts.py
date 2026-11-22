@@ -15,9 +15,17 @@ from openjarvis.core.registry import TTSRegistry
 from openjarvis.speech.tts import TTSBackend, TTSResult
 
 _CARTESIA_API_BASE = "https://api.cartesia.ai"
-# Cartesia sunsets old model ids (bare "sonic" now returns 400), so keep this
-# on a current generation.
+
+# Cartesia retired the original ``sonic`` model id: the API now answers
+# ``400 Model sunsetted`` for it, which surfaced as a silent "Audio not
+# playing" digest. ``sonic-3`` is a supported baseline. ``CARTESIA_MODEL``
+# lets users follow the next rotation without a code change.
 _DEFAULT_MODEL = "sonic-3"
+_CARTESIA_VERSION = "2025-04-16"
+
+
+def _default_model() -> str:
+    return os.environ.get("CARTESIA_MODEL", "") or _DEFAULT_MODEL
 
 
 def _cartesia_synthesize(
@@ -34,7 +42,7 @@ def _cartesia_synthesize(
         f"{_CARTESIA_API_BASE}/tts/bytes",
         headers={
             "X-API-Key": api_key,
-            "Cartesia-Version": "2024-06-10",
+            "Cartesia-Version": _CARTESIA_VERSION,
         },
         json={
             "model_id": model,
@@ -46,7 +54,7 @@ def _cartesia_synthesize(
                 "encoding": "mp3" if output_format == "mp3" else "pcm_f32le",
             },
             "language": language,
-            **({"speed": speed} if speed != 1.0 else {}),
+            **({"generation_config": {"speed": speed}} if speed != 1.0 else {}),
         },
         timeout=120.0,
     )
@@ -61,14 +69,10 @@ class CartesiaTTSBackend(TTSBackend):
     backend_id = "cartesia"
 
     def __init__(
-        self,
-        *,
-        api_key: str = "",
-        model: str = _DEFAULT_MODEL,
-        language: str = "en",
+        self, *, api_key: str = "", model: str = "", language: str = "en"
     ) -> None:
         self._api_key = api_key or os.environ.get("CARTESIA_API_KEY", "")
-        self._model = model
+        self._model = model or _default_model()
         self._language = language or os.environ.get("CARTESIA_LANGUAGE", "en")
 
     def synthesize(
@@ -111,7 +115,7 @@ class CartesiaTTSBackend(TTSBackend):
             f"{_CARTESIA_API_BASE}/voices",
             headers={
                 "X-API-Key": self._api_key,
-                "Cartesia-Version": "2024-06-10",
+                "Cartesia-Version": _CARTESIA_VERSION,
             },
             timeout=30.0,
         )

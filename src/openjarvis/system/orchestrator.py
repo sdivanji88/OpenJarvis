@@ -200,6 +200,10 @@ class QueryOrchestrator:
                 agent_id=agent_name,
             )
         )
+        if system_prompt is None:
+            _cfg_prompt = getattr(s.config.agent, "system_prompt", "") or ""
+            if _cfg_prompt.strip():
+                system_prompt = _cfg_prompt
         if system_prompt is not None:
             agent_kwargs["system_prompt"] = system_prompt
         if operator_id is not None:
@@ -234,6 +238,24 @@ class QueryOrchestrator:
             agent_kwargs["tools"] = digest_tools + list(existing)
 
         self._restrict_tools(agent_name, agent_kwargs)
+
+        # Wire the SystemPromptBuilder so SOUL.md / MEMORY.md / USER.md reach the
+        # model on channel turns too, like cli/serve.py and sdk.py. Skipped when
+        # the caller passed its own system_prompt, which the builder would
+        # replace; agents whose __init__ lacks the kwarg opt out.
+        import inspect
+
+        if (
+            system_prompt is None
+            and "prompt_builder" in inspect.signature(agent_cls.__init__).parameters
+        ):
+            from openjarvis.prompt.builder import SystemPromptBuilder
+
+            agent_kwargs["prompt_builder"] = SystemPromptBuilder(
+                agent_template=s.config.agent.default_system_prompt or "",
+                memory_files_config=s.config.memory_files,
+                system_prompt_config=s.config.system_prompt,
+            )
 
         from openjarvis.agents.factory import build_agent
 
@@ -363,6 +385,14 @@ class QueryOrchestrator:
                     from openjarvis.tools.llm_tool import LLMTool
 
                     tools.append(LLMTool(s.engine, model=s.model))
+                elif name in {"file_read", "file_write"} and ToolRegistry.contains(
+                    name
+                ):
+                    from openjarvis.tools._paths import file_tool_kwargs
+
+                    tools.append(
+                        ToolRegistry.create(name, **file_tool_kwargs(name, s.config))
+                    )
                 elif ToolRegistry.contains(name):
                     tools.append(ToolRegistry.create(name))
             except Exception as exc:

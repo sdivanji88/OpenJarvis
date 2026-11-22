@@ -33,8 +33,14 @@ def _default_path() -> Path:
 
 
 TOOL_CREDENTIALS: dict[str, list[str]] = {
-    "web_search": ["TAVILY_API_KEY", "YOUDOTCOM_API_KEY", "SERPLY_API_KEY"],
+    "web_search": [
+        "TAVILY_API_KEY",
+        "YOUDOTCOM_API_KEY",
+        "SERPLY_API_KEY",
+        "FIRECRAWL_API_KEY",
+    ],
     "get_weather": ["OPENWEATHERMAP_API_KEY"],
+    "fx_macro_data": ["FXMACRODATA_API_KEY"],
     "image_generate": ["OPENAI_API_KEY"],
     "slack": ["SLACK_BOT_TOKEN", "SLACK_APP_TOKEN"],
     "telegram": ["TELEGRAM_BOT_TOKEN"],
@@ -76,7 +82,18 @@ TOOL_CREDENTIALS: dict[str, list[str]] = {
 # result quality. ``text_to_speech`` also runs keyless on local Kokoro (OpenAI
 # TTS needs ``OPENAI_API_KEY``); the Cartesia key only selects that backend.
 OPTIONAL_TOOL_CREDENTIALS: dict[str, frozenset[str]] = {
-    "web_search": frozenset({"TAVILY_API_KEY", "YOUDOTCOM_API_KEY", "SERPLY_API_KEY"}),
+    "web_search": frozenset(
+        {
+            "TAVILY_API_KEY",
+            "YOUDOTCOM_API_KEY",
+            "SERPLY_API_KEY",
+            "FIRECRAWL_API_KEY",
+        }
+    ),
+    # Recent USD releases, the USD calendar and every catalogue are keyless;
+    # the key unlocks other currencies, full history and FX rates.
+    "fx_macro_data": frozenset({"FXMACRODATA_API_KEY"}),
+    # Local Kokoro runs keyless; Cartesia only selects that backend.
     "text_to_speech": frozenset({"CARTESIA_API_KEY"}),
 }
 
