@@ -355,8 +355,10 @@ def _build_tools(
             tools.append(tool_cls(channel=channel))
         elif name == "llm":
             tools.append(tool_cls(engine=engine, model=model_name))
-        elif name == "file_read":
-            tools.append(tool_cls())
+        elif name in {"file_read", "file_write"}:
+            from openjarvis.tools._paths import file_tool_kwargs
+
+            tools.append(tool_cls(**file_tool_kwargs(name, config)))
         else:
             tools.append(tool_cls())
     return tools
@@ -408,6 +410,7 @@ def _run_agent(
     mcp_tools, mcp_clients = load_mcp_tools_from_config(
         config.tools.mcp,
         allowed_names=set(tool_names) if tool_names else None,
+        config_dir=config._config_dir,
     )
     if mcp_tools:
         # Dedup against registry tools by spec.name — first occurrence wins
@@ -510,7 +513,9 @@ def _run_agent(
             skill_few_shot_examples=skill_few_shot_examples,
         )
 
-    agent = agent_cls(engine, model_name, **agent_kwargs)
+    from openjarvis.agents.factory import build_agent
+
+    agent = build_agent(agent_cls, engine, model_name, config=config, **agent_kwargs)
     from openjarvis.security.runtime import wire_agent_security
 
     wire_agent_security(

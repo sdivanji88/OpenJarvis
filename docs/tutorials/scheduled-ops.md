@@ -83,11 +83,23 @@ jarvis scheduler create "Check gym schedule" \
     --type cron --value "0 6 * * 1,3,5"
 ```
 
-Then start the scheduler daemon in the foreground (or as a background service):
+Scheduled runs are deny-by-default. Allow the agents and tools these tasks use in `~/.openjarvis/config.toml`:
+
+```toml title="~/.openjarvis/config.toml"
+[scheduler]
+allowed_agents = ["orchestrator"]
+allowed_tools = ["web_search", "think", "git_diff", "git_log", "file_read"]
+```
+
+Then start the scheduler daemon in the foreground, or install it as a macOS login service that starts at login and restarts after a crash:
 
 ```bash title="Terminal"
-jarvis scheduler start
+jarvis scheduler start             # foreground, until Ctrl+C
+jarvis scheduler start --install   # launchd service; logs in ~/.openjarvis/logs/
+jarvis scheduler status
 ```
+
+`jarvis serve` does not run scheduled tasks. After changing the allowlists, restart the service with `launchctl kickstart -k gui/$UID/com.openjarvis.scheduler`. See [Task Scheduler](../user-guide/scheduler.md#unattended-runs) for outcomes, late-run handling, and logs.
 
 List registered tasks at any time:
 

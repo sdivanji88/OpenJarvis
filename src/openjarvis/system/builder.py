@@ -475,12 +475,14 @@ class SystemBuilder:
     ):
         """Resolve tool instances via MCPServer (primary) + external MCP servers."""
         from openjarvis.mcp.server import MCPServer
+        from openjarvis.tools._paths import validate_allowed_dirs
 
         internal_server = MCPServer(
             bus=bus,
             capability_policy=capability_policy,
             rate_limiter=rate_limiter,
             agent_id="system:mcp",
+            allowed_dirs=validate_allowed_dirs(config.security.allowed_dirs),
         )
         for tool in internal_server.get_tools():
             self._inject_tool_deps(tool, engine, model, memory_backend, channel_backend)
@@ -558,6 +560,10 @@ class SystemBuilder:
             pass  # scheduler injection handled post-build
 
     def _setup_sandbox(self, config):
+        if config.sandbox.runtime == "openshell":
+            from openjarvis.sandbox import openshell_runner
+
+            return openshell_runner.shared_runner(config.sandbox)
         sandbox_enabled = (
             self._sandbox if self._sandbox is not None else config.sandbox.enabled
         )
@@ -584,17 +590,9 @@ class SystemBuilder:
         if not scheduler_enabled:
             return None, None
         try:
-            from openjarvis.scheduler.store import SchedulerStore
+            from openjarvis.scheduler.store import open_default_store
 
-            db_path = config.scheduler.db_path or str(
-                config.hardware.platform  # unused, just for fallback
-            )
-            if not config.scheduler.db_path:
-                from openjarvis.core.config import DEFAULT_CONFIG_DIR
-
-                db_path = str(DEFAULT_CONFIG_DIR / "scheduler.db")
-
-            store = SchedulerStore(db_path=db_path)
+            store = open_default_store(config)
 
             from openjarvis.scheduler.scheduler import TaskScheduler
 

@@ -187,6 +187,7 @@ class TestOptionalCredentials:
         assert is_credential_optional("web_search", "TAVILY_API_KEY") is True
         assert is_credential_optional("web_search", "YOUDOTCOM_API_KEY") is True
         assert is_credential_optional("web_search", "SERPLY_API_KEY") is True
+        assert is_credential_optional("web_search", "FIRECRAWL_API_KEY") is True
 
     def test_other_tool_keys_stay_required(self):
         from openjarvis.core.credentials import is_credential_optional
@@ -197,6 +198,30 @@ class TestOptionalCredentials:
         from openjarvis.core.credentials import get_required_credentials
 
         assert get_required_credentials("web_search") == []
+
+    def test_cartesia_key_is_optional_for_text_to_speech(self):
+        from openjarvis.core.credentials import (
+            TOOL_CREDENTIALS,
+            get_required_credentials,
+            is_credential_optional,
+        )
+
+        assert TOOL_CREDENTIALS["text_to_speech"] == ["CARTESIA_API_KEY"]
+        assert is_credential_optional("text_to_speech", "CARTESIA_API_KEY") is True
+        assert get_required_credentials("text_to_speech") == []
+
+    def test_cartesia_key_can_be_persisted_owner_only(self, tmp_path, monkeypatch):
+        """The scheduler service reads the key from credentials.toml."""
+        from openjarvis.core.credentials import load_credentials, save_credential
+
+        path = tmp_path / "credentials.toml"
+        monkeypatch.delenv("CARTESIA_API_KEY", raising=False)
+        save_credential("text_to_speech", "CARTESIA_API_KEY", "ck-key", path=path)
+
+        assert load_credentials(path=path)["text_to_speech"] == {
+            "CARTESIA_API_KEY": "ck-key"
+        }
+        assert path.stat().st_mode & 0o777 == 0o600
 
     def test_required_keys_unchanged_for_other_tools(self):
         from openjarvis.core.credentials import get_required_credentials
@@ -225,4 +250,16 @@ class TestOptionalCredentials:
         save_credential("web_search", "SERPLY_API_KEY", "srp-key", path=path)
         assert load_credentials(path=path)["web_search"]["SERPLY_API_KEY"] == (
             "srp-key"
+        )
+
+    def test_firecrawl_key_can_be_persisted(self, tmp_path, monkeypatch):
+        """Same guard for the Firecrawl key: declared, so the Settings UI can
+        store it, and still not required for web_search to run."""
+        from openjarvis.core.credentials import load_credentials, save_credential
+
+        path = tmp_path / "credentials.toml"
+        monkeypatch.delenv("FIRECRAWL_API_KEY", raising=False)
+        save_credential("web_search", "FIRECRAWL_API_KEY", "fc-test", path=path)
+        assert load_credentials(path=path)["web_search"]["FIRECRAWL_API_KEY"] == (
+            "fc-test"
         )

@@ -299,6 +299,15 @@ class TestSystemBuilder:
         builder = SystemBuilder(config)
         assert builder._config is config
 
+    def test_openshell_runtime_uses_the_shared_runner(self, monkeypatch):
+        import openjarvis.sandbox.openshell_runner as openshell_runner
+
+        runner = object()
+        monkeypatch.setattr(openshell_runner, "shared_runner", lambda sandbox: runner)
+        config = JarvisConfig()
+        config.sandbox.runtime = "openshell"
+        assert SystemBuilder(config)._setup_sandbox(config) is runner
+
     def test_builder_engine_setter(self):
         config = JarvisConfig()
         builder = SystemBuilder(config)

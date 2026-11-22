@@ -32,12 +32,19 @@ The operative agent uses memory to track state across runs, so indexing your dat
 
 ### 4. Create a scheduled task
 
-```bash
-jarvis scheduler start
+Scheduled runs are deny-by-default: allow the agent and its tools in `~/.openjarvis/config.toml` first (see [Unattended runs](scheduler.md#unattended-runs)):
 
-jarvis scheduler create \
-  --prompt "Check for new emails about Project X and update your notes" \
-  --schedule "0 9 * * 1-5" \
+```toml
+[scheduler]
+allowed_agents = ["operative"]
+allowed_tools = ["knowledge_search", "knowledge_sql", "memory_store", "think"]
+```
+
+```bash
+jarvis scheduler start --install   # macOS login service; or `jarvis scheduler start` in a terminal
+
+jarvis scheduler create "Check for new emails about Project X and update your notes" \
+  --type cron --value "0 9 * * 1-5" \
   --agent operative \
   --tools "knowledge_search,knowledge_sql,memory_store,think"
 ```
@@ -73,31 +80,32 @@ Common examples:
 ### CLI commands
 
 ```bash
-# Start the scheduler daemon
+# Start the scheduler daemon (foreground), or install it as a login service
 jarvis scheduler start
+jarvis scheduler start --install
 
 # Create a new scheduled task
-jarvis scheduler create \
-  --prompt "Summarize any new research papers in my library" \
-  --schedule "0 8 * * *" \
+jarvis scheduler create "Summarize any new research papers in my library" \
+  --type cron --value "0 8 * * *" \
   --agent operative
 
 # List all scheduled tasks
 jarvis scheduler list
 
-# View task details and run history
-jarvis scheduler status <task-id>
+# View run history
+jarvis scheduler logs <task-id>
 
-# Pause / resume / delete a task
+# Pause / resume / cancel a task
 jarvis scheduler pause <task-id>
 jarvis scheduler resume <task-id>
-jarvis scheduler delete <task-id>
+jarvis scheduler cancel <task-id>
 
-# Run a task immediately (outside its schedule)
-jarvis scheduler run <task-id>
+# Run an agent's active task now, for testing (bypasses the allowlists)
+jarvis scheduler run-task operative
 
-# Stop the scheduler daemon
-jarvis scheduler stop
+# Is the scheduler service installed and running? Remove it.
+jarvis scheduler status
+jarvis scheduler start --uninstall
 ```
 
 ## Configuration Reference
@@ -153,8 +161,8 @@ default_backend = "sqlite"
 
 ```bash
 jarvis scheduler create \
-  --prompt "Review my recent emails. Flag anything urgent and summarize the rest. Store a daily summary." \
-  --schedule "0 9 * * 1-5" \
+  "Review my recent emails. Flag anything urgent and summarize the rest. Store a daily summary." \
+  --type cron --value "0 9 * * 1-5" \
   --agent operative \
   --tools "knowledge_search,memory_store,think"
 ```
@@ -163,8 +171,8 @@ jarvis scheduler create \
 
 ```bash
 jarvis scheduler create \
-  --prompt "Search for new papers related to 'efficient transformers'. Compare with papers I've already indexed and note what's new." \
-  --schedule "0 8 * * 1" \
+  "Search for new papers related to 'efficient transformers'. Compare with papers I've already indexed and note what's new." \
+  --type cron --value "0 8 * * 1" \
   --agent operative \
   --tools "knowledge_search,web_search,memory_store,think"
 ```
@@ -173,8 +181,8 @@ jarvis scheduler create \
 
 ```bash
 jarvis scheduler create \
-  --prompt "Check the project status documents and generate a weekly progress summary. Note any blockers." \
-  --schedule "0 17 * * 5" \
+  "Check the project status documents and generate a weekly progress summary. Note any blockers." \
+  --type cron --value "0 17 * * 5" \
   --agent operative \
   --tools "knowledge_search,knowledge_sql,memory_store,think"
 ```
@@ -190,9 +198,11 @@ The operative agent differs from other agents in that it maintains state across 
 
 ## Troubleshooting
 
-**"Scheduler not running"** -- Start the scheduler daemon with `jarvis scheduler start`. It must be running for scheduled tasks to execute.
+**"Scheduler not running"** -- Check `jarvis scheduler status`, then start it with `jarvis scheduler start --install` (or `jarvis scheduler start` in a terminal). `jarvis serve` does not run scheduled tasks.
 
-**Task doesn't run on time** -- Check that Ollama is running (`ollama serve`). The scheduler triggers the agent, but the agent needs an inference engine. Verify the schedule with `jarvis scheduler status <task-id>`.
+**Task logged as skipped** -- Its agent is not in `scheduler.allowed_agents`. Add it, then restart the service (`launchctl kickstart -k gui/$UID/com.openjarvis.scheduler`).
+
+**Task doesn't run on time** -- Check that Ollama is running (`ollama serve`). The scheduler triggers the agent, but the agent needs an inference engine. Check `jarvis scheduler list` and `jarvis scheduler logs <task-id>`, and the service log at `~/.openjarvis/logs/scheduler.err.log`.
 
 **Agent produces inconsistent results** -- Keep `temperature` at `0.3` or lower for scheduled tasks. Higher temperatures introduce randomness that compounds across runs.
 

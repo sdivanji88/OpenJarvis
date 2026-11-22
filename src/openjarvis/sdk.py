@@ -540,7 +540,11 @@ class Jarvis:
                 system_prompt_config=self._config.system_prompt,
             )
 
-        agent_obj = agent_cls(self._engine, model_name, **agent_kwargs)
+        from openjarvis.agents.factory import build_agent
+
+        agent_obj = build_agent(
+            agent_cls, self._engine, model_name, config=self._config, **agent_kwargs
+        )
         from openjarvis.security.runtime import wire_agent_security
 
         wire_agent_security(

@@ -2,25 +2,20 @@
 
 from __future__ import annotations
 
-import signal
-import sys
 from typing import Optional
 
 import click
 from rich.console import Console
 from rich.table import Table
 
+from openjarvis.cli.scheduler_service_cmd import scheduler_start, scheduler_status
+
 
 def _get_store() -> "SchedulerStore":  # noqa: F821
     """Build a SchedulerStore from user config."""
-    from openjarvis.core.config import DEFAULT_CONFIG_DIR, load_config
-    from openjarvis.scheduler.store import SchedulerStore
+    from openjarvis.scheduler.store import open_default_store
 
-    config = load_config()
-    db_path = getattr(getattr(config, "scheduler", None), "db_path", None) or str(
-        DEFAULT_CONFIG_DIR / "scheduler.db"
-    )
-    return SchedulerStore(db_path)
+    return open_default_store()
 
 
 def _get_scheduler(store: "SchedulerStore") -> "TaskScheduler":  # noqa: F821
@@ -183,6 +178,8 @@ def scheduler_cancel(task_id: str) -> None:
 @click.option("-n", "--limit", default=10, type=int, help="Number of logs to show.")
 def scheduler_logs(task_id: str, limit: int) -> None:
     """Show run logs for a scheduled task."""
+    from openjarvis.cli._run_outcome import outcome_cell
+
     console = Console()
     store = _get_store()
     try:
@@ -195,12 +192,11 @@ def scheduler_logs(task_id: str, limit: int) -> None:
         table.add_column("ID", justify="right")
         table.add_column("Started")
         table.add_column("Finished")
-        table.add_column("Success")
+        table.add_column("Outcome")
         table.add_column("Result", max_width=40)
         table.add_column("Error", max_width=30)
 
         for log in logs:
-            success_str = "[green]yes[/green]" if log["success"] else "[red]no[/red]"
             result_text = log["result"]
             result_short = (
                 (result_text[:37] + "...") if len(result_text) > 40 else result_text
@@ -209,7 +205,7 @@ def scheduler_logs(task_id: str, limit: int) -> None:
                 str(log["id"]),
                 log["started_at"],
                 log.get("finished_at") or "N/A",
-                success_str,
+                outcome_cell(log["outcome"]),
                 result_short,
                 log.get("error", ""),
             )
@@ -230,11 +226,8 @@ def scheduler_run_task(agent_name: str, dry_run: bool) -> None:
     """Immediately execute the active task for AGENT_NAME.
 
     Finds the first active scheduled task whose agent matches AGENT_NAME
-    and runs it right now — useful for testing and for launchd invocation
-    when OpenJarvis is not running as a persistent daemon.
-
-    Example (launchd plist ProgramArguments):
-        jarvis scheduler run-task proactive
+    and runs it right now, for manual testing. It bypasses the scheduler
+    allowlists; use 'jarvis scheduler start' for unattended runs.
     """
     console = Console()
     store = _get_store()
@@ -260,34 +253,18 @@ def scheduler_run_task(agent_name: str, dry_run: bool) -> None:
         console.print(f"Running task [cyan]{match.id}[/cyan] (agent: {match.agent})…")
 
         from openjarvis.core.config import load_config
+        from openjarvis.scheduler.scheduler import RunOutcome, TaskScheduler
         from openjarvis.system import SystemBuilder
 
         system = SystemBuilder(load_config()).build()
-        result = system.ask(match.prompt, agent=match.agent)
-
-        # Log the run result in the scheduler store
-        from datetime import datetime, timezone
-
-        if isinstance(result, (dict, list)):
-            import json as _json
-
-            result_str = _json.dumps(result, default=str)
-        else:
-            result_str = str(result) if result is not None else ""
-
-        now = datetime.now(timezone.utc).isoformat()
-        store.log_run(
-            task_id=match.id,
-            started_at=now,
-            finished_at=now,
-            success=True,
-            result=result_str,
-            error="",
-        )
+        record = TaskScheduler(store, system, bus=system.bus).run_now(match.id)
+        if record.outcome is RunOutcome.FAILED:
+            console.print(f"[red]Task failed: {record.error}[/red]")
+            raise SystemExit(1)
 
         console.print("[green]Done.[/green]")
-        if result:
-            console.print(result)
+        if record.result:
+            console.print(record.result)
     except Exception as exc:
         console.print(f"[red]Error: {exc}[/red]")
         raise SystemExit(1)
@@ -295,42 +272,5 @@ def scheduler_run_task(agent_name: str, dry_run: bool) -> None:
         store.close()
 
 
-@scheduler.command("start")
-@click.option(
-    "--poll-interval",
-    default=60,
-    type=int,
-    help="Seconds between poll cycles.",
-)
-def scheduler_start(poll_interval: int) -> None:
-    """Start the scheduler daemon (foreground)."""
-    console = Console()
-    store = _get_store()
-
-    from openjarvis.scheduler.scheduler import TaskScheduler
-
-    sched = TaskScheduler(store, poll_interval=poll_interval)
-    sched.start()
-    console.print(
-        f"[green]Scheduler running (poll every {poll_interval}s). "
-        "Press Ctrl+C to stop.[/green]"
-    )
-
-    def _handle_signal(signum: int, frame: object) -> None:
-        sched.stop()
-        store.close()
-        console.print("\n[yellow]Scheduler stopped.[/yellow]")
-        sys.exit(0)
-
-    signal.signal(signal.SIGINT, _handle_signal)
-    signal.signal(signal.SIGTERM, _handle_signal)
-
-    # Block main thread until the daemon thread dies
-    try:
-        signal.pause()
-    except AttributeError:
-        # signal.pause() not available on Windows
-        import time
-
-        while True:
-            time.sleep(1)
+scheduler.add_command(scheduler_start)
+scheduler.add_command(scheduler_status)

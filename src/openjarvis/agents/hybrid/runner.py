@@ -437,7 +437,12 @@ def _build_agent(cell: Dict[str, Any]):
     cloud = cell.get("cloud") or {}
     method_cfg = dict(cell.get("method_cfg") or {})
 
-    return agent_cls(
+    from openjarvis.agents.factory import build_agent
+    from openjarvis.core.config import load_config
+
+    return build_agent(
+        agent_cls,
+        config=load_config(),
         engine=None,  # raw SDK calls — engine unused
         model=cloud.get("model", ""),
         local_model=local.get("model"),

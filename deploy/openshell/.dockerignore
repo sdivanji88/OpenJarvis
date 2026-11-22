@@ -1,0 +1,7 @@
+# This directory is the whole build context. It holds only the Dockerfile and
+# the artifacts staged by scripts/build-openshell-image.sh; keep anything else
+# out of the image.
+.dockerignore
+.env*
+*.pem
+*.key

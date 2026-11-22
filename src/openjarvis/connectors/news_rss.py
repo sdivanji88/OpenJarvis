@@ -1,7 +1,8 @@
 """News/RSS connector — aggregate headlines from RSS and Atom feeds.
 
 Uses stdlib xml.etree.ElementTree for parsing (no extra dependencies).
-Config file lists feeds to follow. All HTTP calls are in module-level
+Config file lists feeds to follow and, optionally, topic keywords that
+narrow each feed to matching headlines. All HTTP calls are in module-level
 functions for easy mocking in tests.
 """
 
@@ -10,6 +11,7 @@ from __future__ import annotations
 import http.client
 import ipaddress
 import json
+import re
 import socket
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -28,6 +30,12 @@ from openjarvis.core.registry import ConnectorRegistry
 _DEFAULT_CONFIG_PATH = str(DEFAULT_CONFIG_DIR / "connectors" / "news_rss.json")
 _MAX_REDIRECTS = 5
 _MAX_FEED_BYTES = 10 * 1024 * 1024
+_MAX_ITEMS_PER_FEED = 5
+# General-news feeds carry few on-topic items, so a keyword filter needs a
+# wider window than the unfiltered first-N to still find enough matches.
+_KEYWORD_SCAN_ITEMS = 30
+_DESCRIPTION_CHARS = 200
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
 
 
 @dataclass(frozen=True)
@@ -230,8 +238,14 @@ def _fetch_feed(url: str) -> str:
     raise ValueError(f"RSS feed exceeded {_MAX_REDIRECTS} redirects")
 
 
-def _parse_rss_items(xml_text: str, max_items: int = 5) -> List[Dict[str, str]]:
-    """Parse RSS or Atom XML and return up to *max_items* entries."""
+def _parse_rss_items(
+    xml_text: str, max_items: int = _MAX_ITEMS_PER_FEED
+) -> List[Dict[str, str]]:
+    """Parse RSS or Atom XML and return up to *max_items* entries.
+
+    Descriptions are returned untruncated so keyword matching sees the whole
+    text; callers bound their size when storing them.
+    """
     root = ET.fromstring(xml_text)
     items: List[Dict[str, str]] = []
 
@@ -242,7 +256,7 @@ def _parse_rss_items(xml_text: str, max_items: int = 5) -> List[Dict[str, str]]:
         items.append(
             {
                 "title": (item_el.findtext("title") or "").strip(),
-                "description": (item_el.findtext("description") or "").strip()[:200],
+                "description": (item_el.findtext("description") or "").strip(),
                 "link": (item_el.findtext("link") or "").strip(),
                 "pubDate": (item_el.findtext("pubDate") or "").strip(),
             }
@@ -263,13 +277,81 @@ def _parse_rss_items(xml_text: str, max_items: int = 5) -> List[Dict[str, str]]:
                     "title": (
                         entry_el.findtext("{http://www.w3.org/2005/Atom}title") or ""
                     ).strip(),
-                    "description": summary.strip()[:200],
+                    "description": summary.strip(),
                     "link": link_href.strip(),
                     "pubDate": updated.strip(),
                 }
             )
 
     return items
+
+
+def _normalize_keywords(keywords: Any) -> List[str]:
+    """Strip, drop empties, and dedupe case-insensitively (first spelling wins).
+
+    Raises ValueError for anything other than a list of strings, so a typo in
+    the connect payload never silently disables the filter.
+    """
+    if not isinstance(keywords, list):
+        raise ValueError("RSS keywords must be a list of strings")
+    normalized: List[str] = []
+    seen: set[str] = set()
+    for keyword in keywords:
+        if not isinstance(keyword, str):
+            raise ValueError("RSS keywords must be a list of strings")
+        cleaned = " ".join(keyword.split())
+        if cleaned and cleaned.casefold() not in seen:
+            seen.add(cleaned.casefold())
+            normalized.append(cleaned)
+    return normalized
+
+
+def _load_keywords(config: Dict[str, Any]) -> List[str]:
+    """Return usable keywords from an on-disk config, skipping junk entries.
+
+    A hand-edited file may hold non-strings; dropping them beats failing the
+    whole sync over one bad entry.
+    """
+    raw = config.get("keywords")
+    if not isinstance(raw, list):
+        return []
+    return _normalize_keywords([k for k in raw if isinstance(k, str)])
+
+
+def _compile_keyword_pattern(keywords: List[str]) -> Optional[re.Pattern[str]]:
+    """Build one case-insensitive whole-word matcher for all *keywords*.
+
+    Lookarounds are used instead of ``\\b`` so keywords that start or end
+    with punctuation (``C++``, ``.NET``) still match, and inner whitespace is
+    flexible so ``artificial intelligence`` survives line wrapping.
+    """
+    if not keywords:
+        return None
+    alternatives = (
+        r"\s+".join(re.escape(word) for word in keyword.split()) for keyword in keywords
+    )
+    return re.compile(
+        r"(?<!\w)(?:" + "|".join(alternatives) + r")(?!\w)", re.IGNORECASE
+    )
+
+
+def _feed_items(
+    xml_text: str, pattern: Optional[re.Pattern[str]]
+) -> List[Dict[str, str]]:
+    """Return the items to keep from one feed: the first matches, or the first N.
+
+    Descriptions are matched in full with markup removed, so a keyword inside
+    a link URL or tag attribute does not count as a hit.
+    """
+    if pattern is None:
+        return _parse_rss_items(xml_text, _MAX_ITEMS_PER_FEED)
+    matches = [
+        item
+        for item in _parse_rss_items(xml_text, _KEYWORD_SCAN_ITEMS)
+        if pattern.search(item["title"])
+        or pattern.search(_HTML_TAG_RE.sub(" ", item["description"]))
+    ]
+    return matches[:_MAX_ITEMS_PER_FEED]
 
 
 def _parse_pub_date(date_str: str) -> Optional[datetime]:
@@ -298,13 +380,37 @@ class NewsRSSConnector(BaseConnector):
         self._config_path = Path(config_path)
         self._status = SyncStatus()
 
-    def _load_config(self) -> List[Dict[str, str]]:
-        """Load feed list from disk."""
-        data = json.loads(self._config_path.read_text(encoding="utf-8"))
-        return data.get("feeds", [])
+    def _load_config(self) -> Dict[str, Any]:
+        """Load the whole config file from disk."""
+        return json.loads(self._config_path.read_text(encoding="utf-8"))
 
-    def configure(self, feeds: List[Dict[str, Any]]) -> None:
-        """Validate and persist RSS feed configuration from the connect UI."""
+    def _load_feeds(self) -> List[Dict[str, str]]:
+        """Load feed list from disk."""
+        return self._load_config().get("feeds", [])
+
+    def _saved_keywords(self) -> List[str]:
+        try:
+            return _load_keywords(self._load_config())
+        except (json.JSONDecodeError, OSError):
+            return []
+
+    def configure(
+        self,
+        feeds: List[Dict[str, Any]],
+        keywords: Optional[List[str]] = None,
+    ) -> None:
+        """Validate and persist RSS feeds plus optional topic keywords.
+
+        ``keywords=None`` keeps whatever keywords are already saved, so the
+        connect UI (which only edits feeds) cannot silently drop the filter;
+        pass ``[]`` to clear them. With no keywords the ``keywords`` key is
+        omitted, matching the file written before keywords existed.
+        """
+        normalized_keywords = (
+            self._saved_keywords()
+            if keywords is None
+            else _normalize_keywords(keywords)
+        )
         normalized: List[Dict[str, str]] = []
         for feed in feeds:
             if not isinstance(feed, dict):
@@ -318,13 +424,16 @@ class NewsRSSConnector(BaseConnector):
             raise ValueError("At least one RSS feed URL is required")
         from openjarvis.security.file_utils import secure_write_json
 
-        secure_write_json(self._config_path, {"feeds": normalized})
+        data: Dict[str, Any] = {"feeds": normalized}
+        if normalized_keywords:
+            data["keywords"] = normalized_keywords
+        secure_write_json(self._config_path, data)
 
     def is_connected(self) -> bool:
         if not self._config_path.exists():
             return False
         try:
-            feeds = self._load_config()
+            feeds = self._load_feeds()
             return len(feeds) > 0
         except (json.JSONDecodeError, OSError):
             return False
@@ -337,7 +446,9 @@ class NewsRSSConnector(BaseConnector):
         self, *, since: Optional[datetime] = None, cursor: Optional[str] = None
     ) -> Iterator[Document]:
         """Yield Documents for recent items across all configured feeds."""
-        feeds = self._load_config()
+        config = self._load_config()
+        feeds = config.get("feeds", [])
+        pattern = _compile_keyword_pattern(_load_keywords(config))
 
         for feed in feeds:
             feed_name = feed.get("name", "Unknown Feed")
@@ -350,8 +461,7 @@ class NewsRSSConnector(BaseConnector):
             except (httpx.HTTPError, ValueError):
                 continue
 
-            items = _parse_rss_items(xml_text)
-            for item in items:
+            for item in _feed_items(xml_text, pattern):
                 pub_dt = _parse_pub_date(item["pubDate"])
 
                 # Filter by since if the date is parseable
@@ -365,7 +475,7 @@ class NewsRSSConnector(BaseConnector):
                     doc_id=doc_id,
                     source="news_rss",
                     doc_type="article",
-                    content=item["description"],
+                    content=item["description"][:_DESCRIPTION_CHARS],
                     title=title,
                     timestamp=pub_dt or datetime.now(),
                     url=item["link"] or None,

@@ -75,7 +75,7 @@ class TestDockerFiles:
 
         # The project itself is built by the final `--no-deps .` install (#567);
         # the force-includes must be present before that step.
-        install_marker = "uv pip install --system --no-deps ."
+        install_marker = "--no-deps ."
         wheel_dockerfiles = [
             p
             for p in _dockerfiles()
@@ -131,15 +131,20 @@ class TestDockerFiles:
             "Dockerfile.sandbox",
         ]
         required_markers = [
-            "rustup toolchain install 1.88",
             "maturin build --release",
             "rust/crates/openjarvis-python/Cargo.toml",
             "/tmp/openjarvis-rust-wheel/*.whl",
             "import openjarvis_rust",
         ]
+        workspace = tomllib.loads((ROOT / "rust" / "Cargo.toml").read_text())
+        rust_version = workspace["workspace"]["package"]["rust-version"]
 
         for name in build_dockerfiles:
             content = (DOCKER_DIR / name).read_text()
+            for command in ("rustup toolchain install", "rustup default"):
+                assert f"{command} {rust_version}" in content, (
+                    f"{name}: {command} must use workspace Rust {rust_version}"
+                )
             for marker in required_markers:
                 assert marker in content, (
                     f"{name}: missing native build marker {marker!r}"

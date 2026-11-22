@@ -4,8 +4,23 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+
+class RunOutcome(str, Enum):
+    """What happened to one scheduled run; the value is the stored run-log text."""
+
+    SUCCESS = "success"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+    MISSED = "missed"
+
+    # Python 3.11+ format() would otherwise give 'RunOutcome.SUCCESS'.
+    def __str__(self) -> str:
+        return self.value
+
 
 _CREATE_TASKS_TABLE = """\
 CREATE TABLE IF NOT EXISTS scheduled_tasks (
@@ -31,9 +46,16 @@ CREATE TABLE IF NOT EXISTS task_run_logs (
     finished_at TEXT,
     success     INTEGER NOT NULL DEFAULT 0,
     result      TEXT    NOT NULL DEFAULT '',
-    error       TEXT    NOT NULL DEFAULT ''
+    error       TEXT    NOT NULL DEFAULT '',
+    outcome     TEXT    NOT NULL DEFAULT ''
 );
 """
+
+# Databases created before ``outcome`` existed keep their rows; those store ''
+# and read back with an outcome derived from ``success``.
+_ADD_OUTCOME_COLUMN = (
+    "ALTER TABLE task_run_logs ADD COLUMN outcome TEXT NOT NULL DEFAULT ''"
+)
 
 _INSERT_TASK = """\
 INSERT OR REPLACE INTO scheduled_tasks
@@ -44,8 +66,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 
 _INSERT_LOG = """\
 INSERT INTO task_run_logs
-    (task_id, started_at, finished_at, success, result, error)
-VALUES (?, ?, ?, ?, ?, ?)
+    (task_id, started_at, finished_at, success, result, error, outcome)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 """
 
 
@@ -58,6 +80,12 @@ class SchedulerStore:
         self._conn.row_factory = sqlite3.Row
         self._conn.execute(_CREATE_TASKS_TABLE)
         self._conn.execute(_CREATE_LOGS_TABLE)
+        columns = {
+            row["name"]
+            for row in self._conn.execute("PRAGMA table_info(task_run_logs)")
+        }
+        if "outcome" not in columns:
+            self._conn.execute(_ADD_OUTCOME_COLUMN)
         self._conn.commit()
 
     # -- Task CRUD -----------------------------------------------------------
@@ -110,6 +138,29 @@ class SchedulerStore:
         ).fetchall()
         return [self._row_to_dict(r) for r in rows]
 
+    def claim_task(
+        self,
+        task_id: str,
+        *,
+        expected_next_run: Optional[str],
+        next_run: Optional[str],
+        last_run: Optional[str],
+        status: str,
+    ) -> bool:
+        """Advance an active task's schedule only if nobody else did first.
+
+        Returns ``True`` when this caller now owns the run for the slot
+        ``expected_next_run``; ``False`` if the task was paused, cancelled, or
+        already claimed (its ``next_run`` moved on).
+        """
+        cur = self._conn.execute(
+            "UPDATE scheduled_tasks SET next_run = ?, last_run = ?, status = ? "
+            "WHERE id = ? AND status = 'active' AND next_run IS ?",
+            (next_run, last_run, status, task_id, expected_next_run),
+        )
+        self._conn.commit()
+        return cur.rowcount == 1
+
     def update_task(self, task: Dict[str, Any]) -> None:
         """Update an existing task (same as save_task — uses INSERT OR REPLACE)."""
         self.save_task(task)
@@ -126,14 +177,27 @@ class SchedulerStore:
         task_id: str,
         started_at: str,
         finished_at: str,
-        success: bool,
+        outcome: RunOutcome | str,
         result: str = "",
         error: str = "",
     ) -> None:
-        """Record a single execution of a task."""
+        """Record a single execution of a task.
+
+        *outcome* decides the legacy ``success`` column (1 only for
+        ``RunOutcome.SUCCESS``); *error* is human-readable text only.
+        """
+        outcome = RunOutcome(outcome)
         self._conn.execute(
             _INSERT_LOG,
-            (task_id, started_at, finished_at, int(success), result, error),
+            (
+                task_id,
+                started_at,
+                finished_at,
+                int(outcome is RunOutcome.SUCCESS),
+                result,
+                error,
+                outcome.value,
+            ),
         )
         self._conn.commit()
 
@@ -143,7 +207,7 @@ class SchedulerStore:
             "SELECT * FROM task_run_logs WHERE task_id = ? ORDER BY id DESC LIMIT ?",
             (task_id, limit),
         ).fetchall()
-        return [dict(r) for r in rows]
+        return [self._log_row_to_dict(r) for r in rows]
 
     # -- Lifecycle -----------------------------------------------------------
 
@@ -163,5 +227,36 @@ class SchedulerStore:
                 d["metadata"] = {}
         return d
 
+    @staticmethod
+    def _log_row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
+        d = dict(row)
+        d["outcome"] = (
+            d["outcome"]
+            or (RunOutcome.SUCCESS if d["success"] else RunOutcome.FAILED).value
+        )
+        return d
 
-__all__ = ["SchedulerStore"]
+
+def default_store_path(config: Any = None) -> Path:
+    """``scheduler.db_path`` from *config* (default: user config), else
+    ``scheduler.db`` in the OpenJarvis home.
+
+    Every writer and the daemon must resolve the same file, or tasks created
+    in one place are never seen by the runner.
+    """
+    from openjarvis.core.config import load_config
+    from openjarvis.core.paths import get_config_dir
+
+    cfg = config if config is not None else load_config()
+    configured = getattr(getattr(cfg, "scheduler", None), "db_path", "")
+    if configured:
+        return Path(configured).expanduser()
+    return get_config_dir() / "scheduler.db"
+
+
+def open_default_store(config: Any = None) -> SchedulerStore:
+    """The store the scheduler daemon runs tasks from."""
+    return SchedulerStore(default_store_path(config))
+
+
+__all__ = ["RunOutcome", "SchedulerStore", "default_store_path", "open_default_store"]

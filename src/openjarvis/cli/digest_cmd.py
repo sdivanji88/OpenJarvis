@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import subprocess
-import threading
+from pathlib import Path
 from typing import Optional
 
 import click
@@ -12,23 +11,11 @@ from rich.markdown import Markdown
 
 from openjarvis.agents.digest_store import DigestStore
 from openjarvis.core.config import DEFAULT_CONFIG_PATH, load_config
+from openjarvis.speech.playback import play_audio as _play_audio
 
-
-def _play_audio(audio_path: str) -> None:
-    """Play audio file in background using available system player."""
-    players = ["ffplay -nodisp -autoexit", "aplay", "afplay", "paplay"]
-    for player in players:
-        cmd_parts = player.split() + [audio_path]
-        try:
-            subprocess.run(
-                cmd_parts,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=True,
-            )
-            return
-        except (FileNotFoundError, subprocess.CalledProcessError):
-            continue
+# A scheduled digest later than this (e.g. the Mac slept through 07:00) is
+# skipped as missed rather than spoken at an odd hour (D-012).
+_DIGEST_MISFIRE_GRACE_MINUTES = 180
 
 
 def _save_digest_schedule(enabled: bool, cron: str) -> None:
@@ -84,12 +71,12 @@ def _save_digest_schedule(enabled: bool, cron: str) -> None:
 def _create_scheduler_task(cron: str, timezone_name: str = "") -> Optional[str]:
     """Create a digest task in the TaskScheduler. Returns task ID or None."""
     try:
+        from openjarvis.scheduler.policy import MISFIRE_GRACE_KEY
         from openjarvis.scheduler.scheduler import TaskScheduler
-        from openjarvis.scheduler.store import SchedulerStore
+        from openjarvis.scheduler.store import open_default_store
 
         timezone_name = timezone_name or load_config().digest.timezone
-        db_path = DEFAULT_CONFIG_PATH.parent / "scheduler.db"
-        store = SchedulerStore(db_path)
+        store = open_default_store()
         scheduler = TaskScheduler(store)
 
         # Cancel any existing digest tasks first
@@ -102,7 +89,10 @@ def _create_scheduler_task(cron: str, timezone_name: str = "") -> Optional[str]:
             schedule_type="cron",
             schedule_value=cron,
             agent="morning_digest",
-            metadata={"timezone": timezone_name},
+            metadata={
+                "timezone": timezone_name,
+                MISFIRE_GRACE_KEY: _DIGEST_MISFIRE_GRACE_MINUTES,
+            },
         )
         store.close()
         return task.id
@@ -114,10 +104,9 @@ def _cancel_scheduler_tasks() -> int:
     """Cancel all active digest tasks. Returns count cancelled."""
     try:
         from openjarvis.scheduler.scheduler import TaskScheduler
-        from openjarvis.scheduler.store import SchedulerStore
+        from openjarvis.scheduler.store import open_default_store
 
-        db_path = DEFAULT_CONFIG_PATH.parent / "scheduler.db"
-        store = SchedulerStore(db_path)
+        store = open_default_store()
         scheduler = TaskScheduler(store)
         count = 0
         for task in scheduler.list_tasks(status="active"):
@@ -203,20 +192,16 @@ def digest(
 
         audio_path = str(artifact.audio_path)
         console.print(f"[dim]Audio path: '{audio_path}'[/dim]")
-        has_audio = bool(audio_path) and artifact.audio_path.exists()
+        has_audio = artifact.audio_path.is_file()
         console.print(f"[dim]Audio available: {has_audio}[/dim]")
-        if has_audio:
-            audio_thread = threading.Thread(
-                target=_play_audio, args=(audio_path,), daemon=True
-            )
-            audio_thread.start()
-            console.print("[dim]Playing audio...[/dim]")
-        else:
+        if not has_audio:
             console.print("[yellow]Audio unavailable — TTS failed.[/yellow]")
-            console.print("[yellow]Check OPENAI_API_KEY is set.[/yellow]")
-
-        console.print(Markdown(artifact.text))
+            console.print(
+                "[yellow]Check the digest TTS backend's API key "
+                "(e.g. CARTESIA_API_KEY) and the log for the error.[/yellow]"
+            )
         store.close()
+        _show_and_play(console, artifact.text, artifact.audio_path, text_only)
         return
 
     # Try to load today's cached digest
@@ -245,16 +230,19 @@ def digest(
                 section_lines.append(line)
         text = "\n".join(section_lines) if section_lines else text
 
-    # Play audio in background while text renders
-    audio_path = str(artifact.audio_path)
-    if not text_only and audio_path and artifact.audio_path.exists():
-        audio_thread = threading.Thread(
-            target=_play_audio, args=(audio_path,), daemon=True
-        )
-        audio_thread.start()
-
-    console.print(Markdown(text))
     store.close()
+    _show_and_play(console, text, artifact.audio_path, text_only)
+
+
+def _show_and_play(
+    console: Console, text: str, audio_path: Path, text_only: bool
+) -> None:
+    """Print the digest, then speak it; returns once playback has finished."""
+    console.print(Markdown(text))
+    # Path("") renders as "." and exists(), so require an actual file.
+    if not text_only and audio_path.is_file():
+        console.print("[dim]Playing audio...[/dim]")
+        _play_audio(str(audio_path))
 
 
 def _handle_schedule(console: Console, schedule: str) -> None:

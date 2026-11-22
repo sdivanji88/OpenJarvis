@@ -14,7 +14,11 @@ from openjarvis.agents.executor import AgentExecutor
 from openjarvis.agents.manager import AgentManager
 from openjarvis.agents.tool_resolver import ResolvedAgentTools
 from openjarvis.connectors.store import KnowledgeStore
-from openjarvis.core.config import MemoryFilesConfig, SystemPromptConfig
+from openjarvis.core.config import (
+    MemoryFilesConfig,
+    SandboxConfig,
+    SystemPromptConfig,
+)
 from openjarvis.core.events import EventBus, EventType
 from openjarvis.core.registry import AgentRegistry, ToolRegistry
 from openjarvis.core.types import Role, ToolResult
@@ -171,6 +175,50 @@ def test_executor_handles_missing_tools(tmp_path):
     mgr.close()
 
 
+@pytest.mark.parametrize("mode", ["tick", "ephemeral"])
+@pytest.mark.parametrize("invalid_policy", [False, True])
+def test_executor_file_tools_keep_application_directory_policy(
+    tmp_path, monkeypatch, mode, invalid_policy
+):
+    from openjarvis.core.config import JarvisConfig
+    from openjarvis.tools.file_read import FileReadTool
+
+    cfg = JarvisConfig()
+    cfg.security.allowed_dirs = None if invalid_policy else [str(tmp_path / "allowed")]
+    monkeypatch.setattr("openjarvis.core.config.load_config", lambda: JarvisConfig())
+    ToolRegistry.register_value("file_read", FileReadTool)
+    AgentRegistry.register_value("monitor_operative", _CapturingToolAgent)
+    _CapturingToolAgent.captured_tools = []
+    system = FakeSystem(engine=FakeEngine([{"content": "unused"}]), config=cfg)
+    mgr = AgentManager(db_path=str(tmp_path / "agents.db"))
+    try:
+        executor = AgentExecutor(manager=mgr, event_bus=EventBus(), system=system)
+        if mode == "ephemeral":
+            if invalid_policy:
+                with pytest.raises(ValueError, match="allowed_dirs"):
+                    executor.run_ephemeral(
+                        "monitor_operative", "", "read", ["file_read"]
+                    )
+            else:
+                executor.run_ephemeral("monitor_operative", "", "read", ["file_read"])
+        else:
+            agent = mgr.create_agent(
+                "file policy",
+                agent_type="monitor_operative",
+                config={"tools": ["file_read"], "instruction": "read"},
+            )
+            executor.execute_tick(agent["id"])
+        tools = {tool.spec.name: tool for tool in _CapturingToolAgent.captured_tools}
+        if invalid_policy:
+            assert "file_read" not in tools
+        else:
+            outside = tmp_path / "outside.txt"
+            outside.write_text("must stay outside")
+            assert not tools["file_read"].execute(path=str(outside)).success
+    finally:
+        mgr.close()
+
+
 def test_executor_handles_string_tools(tmp_path):
     """Executor should handle comma-separated tool string as well as list."""
     _register_agent()
@@ -226,6 +274,7 @@ def test_executor_uses_tool_loop_for_non_tool_agent_with_configured_tools(tmp_pa
         agent=SimpleNamespace(default_system_prompt="GLOBAL_DEFAULT"),
         memory_files=MemoryFilesConfig(persona_name="none"),
         system_prompt=SystemPromptConfig(),
+        sandbox=SandboxConfig(),
     )
     manager = AgentManager(db_path=str(tmp_path / "agents.db"))
     agent = manager.create_agent(
@@ -247,7 +296,7 @@ def test_executor_uses_tool_loop_for_non_tool_agent_with_configured_tools(tmp_pa
         assert engine.call_count == 2
         assert any(
             message.role is Role.SYSTEM
-            and message.content == "NON_TOOL_SYSTEM_SENTINEL"
+            and message.content.startswith("NON_TOOL_SYSTEM_SENTINEL")
             for message in engine.last_messages or []
         )
         refreshed = manager.get_agent(agent["id"])
@@ -404,6 +453,7 @@ def test_simple_agent_without_tools_keeps_its_custom_system_prompt(tmp_path):
         agent=SimpleNamespace(default_system_prompt="GLOBAL_DEFAULT"),
         memory_files=MemoryFilesConfig(persona_name="none"),
         system_prompt=SystemPromptConfig(),
+        sandbox=SandboxConfig(),
     )
     manager = AgentManager(db_path=str(tmp_path / "agents.db"))
     agent = manager.create_agent(
@@ -423,7 +473,7 @@ def test_simple_agent_without_tools_keeps_its_custom_system_prompt(tmp_path):
         assert engine.call_count == 1
         assert any(
             message.role is Role.SYSTEM
-            and message.content == "SIMPLE_CUSTOM_SYSTEM_SENTINEL"
+            and message.content.startswith("SIMPLE_CUSTOM_SYSTEM_SENTINEL")
             for message in engine.last_messages or []
         )
     finally:

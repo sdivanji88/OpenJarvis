@@ -71,6 +71,7 @@ Personal AI must be accessible from the devices people actually carry. OpenJarvi
 |------|----------|---------|
 | WhatsApp via Meta Cloud API | **Design Needed** | Baileys protocol is blocked by WhatsApp (405 errors). Need to implement via the official Meta WhatsApp Business API. Requires Meta Business account registration. |
 | WhatsApp via Baileys (workaround) | **Blocked** | WhatsApp is actively blocking unofficial Baileys connections (405 Method Not Allowed). Monitor the [Baileys repo](https://github.com/WhiskeySockets/Baileys) for protocol updates. |
+| WhatsApp as a morning-digest source | **Design Agreed** | Reading business updates for the digest does not use Baileys: a `whatsapp_desktop` connector reads the WhatsApp Mac app's local database read-only, business chats only (feature F-025, decisions D-018 – D-026). |
 | Slack rich messages (Block Kit) | **Ready** | Current Slack responses use mrkdwn formatting. Add Block Kit support for structured responses with buttons, sections, and attachments. **Good first issue.** |
 | Unified notification system | **Design Needed** | Push notifications when operators complete tasks or need user attention. Requires per-channel notification adapters. |
 | Signal bidirectional | **Design Needed** | Currently send-only via signal-cli REST API. Add incoming message listener with background polling. |

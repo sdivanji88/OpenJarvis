@@ -16,7 +16,9 @@ from openjarvis.agents.errors import (
     classify_error,
     retry_delay,
 )
+from openjarvis.agents.factory import build_agent
 from openjarvis.agents.tool_resolver import resolve_agent_tools
+from openjarvis.core.config import JarvisConfig, load_config
 from openjarvis.core.events import EventBus, EventType
 
 if TYPE_CHECKING:
@@ -139,6 +141,11 @@ class AgentExecutor:
         except Exception:
             pass  # Non-critical
 
+    def _jarvis_config(self) -> JarvisConfig:
+        # Without a system, read the config from disk rather than default to
+        # one without the sandbox runtime.
+        return getattr(self._system, "config", None) or load_config()
+
     def run_ephemeral(
         self,
         agent_type: str,
@@ -156,7 +163,9 @@ class AgentExecutor:
             else getattr(self._manager, "_engine", None)
         )
         if not tools:
-            agent = agent_cls(
+            agent = build_agent(
+                agent_cls,
+                config=self._jarvis_config(),
                 engine=engine,
                 system_prompt=system_prompt,
                 bus=self._bus,
@@ -180,7 +189,13 @@ class AgentExecutor:
             if isinstance(registered, BaseTool):
                 instances.append(registered)
             elif isinstance(registered, type) and issubclass(registered, BaseTool):
-                instances.append(registered())
+                from openjarvis.tools._paths import file_tool_kwargs
+
+                instances.append(
+                    registered(
+                        **file_tool_kwargs(name, getattr(self._system, "config", None))
+                    )
+                )
 
         execution_cls = (
             agent_cls
@@ -188,7 +203,9 @@ class AgentExecutor:
             else OrchestratorAgent
         )
         system = self._system
-        agent = execution_cls(
+        agent = build_agent(
+            execution_cls,
+            config=self._jarvis_config(),
             engine=engine,
             model=getattr(system, "model", "") or _AGENT_TICK_DEFAULT_MODEL,
             system_prompt=system_prompt,
@@ -461,6 +478,7 @@ class AgentExecutor:
             mcp_tools=mcp_tools,
             mcp_clients=mcp_clients,
             knowledge_db_path=getattr(self._system, "knowledge_db_path", None),
+            app_config=getattr(self._system, "config", None),
         )
         self._toolkit_local.current = resolved_toolkit
         tool_instances = resolved_toolkit.instances
@@ -582,23 +600,30 @@ class AgentExecutor:
                     system_prompt_config=getattr(cfg, "system_prompt", None),
                 )
 
+        jarvis_config = self._jarvis_config()
         try:
             try:
-                agent_instance = execution_agent_cls(
+                agent_instance = build_agent(
+                    execution_agent_cls,
                     engine,
                     model,
+                    config=jarvis_config,
                     **agent_kwargs,
                     **state_kwargs,
                 )
             except TypeError:
                 try:
-                    agent_instance = execution_agent_cls(
+                    agent_instance = build_agent(
+                        execution_agent_cls,
                         engine,
                         model,
+                        config=jarvis_config,
                         **agent_kwargs,
                     )
                 except TypeError:
-                    agent_instance = execution_agent_cls(engine, model)
+                    agent_instance = build_agent(
+                        execution_agent_cls, engine, model, config=jarvis_config
+                    )
         except Exception:
             resolved_toolkit.close()
             raise
@@ -857,7 +882,11 @@ class AgentExecutor:
             if agent_data:
                 config = agent_data.get("config", {})
                 max_cost = config.get("max_cost", 0)
-                max_tokens = config.get("max_tokens", 0)
+                # Lifetime token budget. Deliberately not "max_tokens": that
+                # key is the per-response generation limit (agent templates
+                # and the agent chat route use it that way), so reading it
+                # here disabled agents after a few thousand tokens in total.
+                max_tokens = config.get("max_total_tokens", 0)
                 exceeded = False
                 if max_cost > 0 and agent_data["total_cost"] > max_cost:
                     exceeded = True

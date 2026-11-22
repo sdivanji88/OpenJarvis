@@ -91,6 +91,14 @@ _ANTHROPIC_MODELS = [
     "claude-haiku-4-5",
     "claude-haiku-4-5-20251001",
 ]
+_ANTHROPIC_FIXED_SAMPLING_PREFIXES = (
+    "claude-opus-4-7",
+    "claude-opus-4-8",
+    "claude-opus-5",
+    "claude-sonnet-5",
+    "claude-fable-5",
+    "claude-haiku-5-5",
+)
 _GOOGLE_MODELS = [
     "gemini-2.5-pro",
     "gemini-2.5-flash",
@@ -116,12 +124,12 @@ _DEEPSEEK_MODELS = [
 _OPENROUTER_POPULAR = [
     "openrouter/auto",
     "openrouter/openai/gpt-4o",
-    "openrouter/anthropic/claude-sonnet-4",
+    "openrouter/anthropic/claude-sonnet-4.5",
     "openrouter/google/gemini-2.5-pro",
     "openrouter/meta-llama/llama-3.3-70b-instruct",
     "openrouter/mistralai/mistral-large",
-    "openrouter/deepseek/deepseek-r1",
-    "openrouter/qwen/qwen3-235b-a22b",
+    "openrouter/deepseek/deepseek-r1-0528",
+    "openrouter/qwen/qwen3-235b-a22b-2507",
 ]
 
 # Atlas Cloud models — prefixed with "atlascloud/" so they can be identified.
@@ -757,9 +765,11 @@ class CloudEngine(InferenceEngine):
         create_kwargs: Dict[str, Any] = {
             "model": model,
             "messages": chat_msgs,
-            "temperature": temperature,
             "max_tokens": max_tokens,
         }
+        if not model.startswith(_ANTHROPIC_FIXED_SAMPLING_PREFIXES):
+            # Anthropic SDK v1 moved legacy sampling parameters to extra_body.
+            create_kwargs["extra_body"] = {"temperature": temperature}
         if system_text:
             create_kwargs["system"] = system_text
 
@@ -1436,9 +1446,11 @@ class CloudEngine(InferenceEngine):
         create_kwargs: Dict[str, Any] = {
             "model": model,
             "messages": chat_msgs,
-            "temperature": temperature,
             "max_tokens": max_tokens,
         }
+        if not model.startswith(_ANTHROPIC_FIXED_SAMPLING_PREFIXES):
+            # Anthropic SDK v1 moved legacy sampling parameters to extra_body.
+            create_kwargs["extra_body"] = {"temperature": temperature}
         if system_text:
             create_kwargs["system"] = system_text
         with self._anthropic_client.messages.stream(**create_kwargs) as stream:
@@ -1895,9 +1907,11 @@ class CloudEngine(InferenceEngine):
         create_kwargs: Dict[str, Any] = {
             "model": model,
             "messages": chat_msgs,
-            "temperature": temperature,
             "max_tokens": max_tokens,
         }
+        if not model.startswith(_ANTHROPIC_FIXED_SAMPLING_PREFIXES):
+            # Anthropic SDK v1 moved legacy sampling parameters to extra_body.
+            create_kwargs["extra_body"] = {"temperature": temperature}
         if system_text:
             create_kwargs["system"] = system_text
         raw_tools = kwargs.pop("tools", None)

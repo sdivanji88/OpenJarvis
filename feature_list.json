@@ -1,0 +1,1892 @@
+{
+  "schema_version": 2,
+  "project": {
+    "name": "OpenJarvis",
+    "description": "Local-first personal AI framework: shared primitives (engines, agents, tools, memory, learning) for on-device agents, with energy, FLOPs, latency and cost as first-class constraints alongside accuracy."
+  },
+  "features": [
+    {
+      "id": "F-001",
+      "title": "CLI chat and ask",
+      "description": "",
+      "priority": "required",
+      "dependencies": [],
+      "status": "implemented",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": []
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria unknown — re-derive and re-verify",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Migrated from schema v1 (status: pass). v1 evidence: src/openjarvis/cli/chat_cmd.py"
+    },
+    {
+      "id": "F-002",
+      "title": "Morning digest with TTS (CLI, API, scheduled)",
+      "description": "",
+      "priority": "required",
+      "dependencies": [],
+      "status": "implemented",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": []
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "The morning digest unit and integration tests pass in the default (hermetic) lane.",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "uv run pytest tests/agents/test_morning_digest.py tests/test_digest_integration.py -q --tb=short -m \"not live and not cloud and not hub\"",
+              "exit_code": 0,
+              "timestamp": "2026-10-04T12:31:52Z"
+            }
+          ]
+        },
+        {
+          "id": "AC-002",
+          "statement": "acceptance criteria unknown — re-derive and re-verify",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [
+          "uv run pytest tests/agents/test_morning_digest.py tests/test_digest_integration.py -q --tb=short -m \"not live and not cloud and not hub\""
+        ],
+        "manual_checks": [],
+        "last_verified_at": "2026-10-04T12:31:52Z"
+      },
+      "blocker": null,
+      "note": "Migrated from schema v1 (status: pass). v1 evidence: src/openjarvis/agents/morning_digest.py; src/openjarvis/server/digest_routes.py; tests/agents/test_morning_digest.py; tests/test_digest_integration.py"
+    },
+    {
+      "id": "F-003",
+      "title": "Deep research agent",
+      "description": "",
+      "priority": "required",
+      "dependencies": [],
+      "status": "implemented",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": []
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria unknown — re-derive and re-verify",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Migrated from schema v1 (status: pass). v1 evidence: src/openjarvis/agents/deep_research.py"
+    },
+    {
+      "id": "F-004",
+      "title": "Multi-engine inference (Ollama, vLLM, llama.cpp, MLX, LiteLLM, cloud)",
+      "description": "",
+      "priority": "required",
+      "dependencies": [],
+      "status": "implemented",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": []
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria unknown — re-derive and re-verify",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Migrated from schema v1 (status: pass). v1 evidence: src/openjarvis/engine/ollama.py"
+    },
+    {
+      "id": "F-005",
+      "title": "Apple Foundation Models engine",
+      "description": "",
+      "priority": "required",
+      "dependencies": [],
+      "status": "implemented",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": []
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria unknown — re-derive and re-verify",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Migrated from schema v1 (status: pass). v1 evidence: src/openjarvis/engine/apple_fm.py"
+    },
+    {
+      "id": "F-006",
+      "title": "FastAPI server with WebSocket streaming",
+      "description": "",
+      "priority": "required",
+      "dependencies": [],
+      "status": "implemented",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": []
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria unknown — re-derive and re-verify",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Migrated from schema v1 (status: pass). v1 evidence: src/openjarvis/server/app.py"
+    },
+    {
+      "id": "F-007",
+      "title": "React web UI",
+      "description": "",
+      "priority": "required",
+      "dependencies": [],
+      "status": "implemented",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": []
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria unknown — re-derive and re-verify",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Migrated from schema v1 (status: pass). v1 evidence: frontend/src/pages/ChatPage.tsx"
+    },
+    {
+      "id": "F-008",
+      "title": "Tauri desktop app with auto-update",
+      "description": "",
+      "priority": "required",
+      "dependencies": [],
+      "status": "implemented",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": []
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria unknown — re-derive and re-verify",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Migrated from schema v1 (status: pass). v1 evidence: frontend/src-tauri/tauri.conf.json"
+    },
+    {
+      "id": "F-009",
+      "title": "Messaging channels (~35 integrations)",
+      "description": "",
+      "priority": "required",
+      "dependencies": [],
+      "status": "implemented",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": []
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria unknown — re-derive and re-verify",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Migrated from schema v1 (status: pass). v1 evidence: src/openjarvis/channels/telegram.py"
+    },
+    {
+      "id": "F-010",
+      "title": "Personal data connectors (Gmail, Calendar, Oura, Notion, ...)",
+      "description": "",
+      "priority": "required",
+      "dependencies": [],
+      "status": "implemented",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": []
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria unknown — re-derive and re-verify",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Migrated from schema v1 (status: pass). v1 evidence: src/openjarvis/connectors/gmail.py"
+    },
+    {
+      "id": "F-011",
+      "title": "Hybrid / BM25 / FAISS retrieval",
+      "description": "",
+      "priority": "required",
+      "dependencies": [],
+      "status": "implemented",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": []
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria unknown — re-derive and re-verify",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Migrated from schema v1 (status: pass). v1 evidence: src/openjarvis/tools/storage/hybrid.py"
+    },
+    {
+      "id": "F-012",
+      "title": "Energy and latency telemetry",
+      "description": "",
+      "priority": "required",
+      "dependencies": [],
+      "status": "implemented",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": []
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria unknown — re-derive and re-verify",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Migrated from schema v1 (status: pass). v1 evidence: src/openjarvis/telemetry/energy_nvidia.py"
+    },
+    {
+      "id": "F-013",
+      "title": "Skills install and optimization",
+      "description": "",
+      "priority": "required",
+      "dependencies": [],
+      "status": "implemented",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": []
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria unknown — re-derive and re-verify",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Migrated from schema v1 (status: pass). v1 evidence: src/openjarvis/cli/skill_cmd.py"
+    },
+    {
+      "id": "F-014",
+      "title": "Learning / optimization loop (DSPy)",
+      "description": "",
+      "priority": "required",
+      "dependencies": [],
+      "status": "implemented",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": []
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria unknown — re-derive and re-verify",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Migrated from schema v1 (status: pass). v1 evidence: src/openjarvis/learning/optimize"
+    },
+    {
+      "id": "F-015",
+      "title": "Evals and benchmarks",
+      "description": "",
+      "priority": "required",
+      "dependencies": [],
+      "status": "implemented",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": []
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria unknown — re-derive and re-verify",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Migrated from schema v1 (status: pass). v1 evidence: src/openjarvis/evals/cli.py"
+    },
+    {
+      "id": "F-016",
+      "title": "Security guardrails and audit log",
+      "description": "",
+      "priority": "required",
+      "dependencies": [],
+      "status": "implemented",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": []
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria unknown — re-derive and re-verify",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Migrated from schema v1 (status: pass). v1 evidence: src/openjarvis/security/guardrails.py"
+    },
+    {
+      "id": "F-017",
+      "title": "Docker / WASM sandbox",
+      "description": "",
+      "priority": "required",
+      "dependencies": [],
+      "status": "implemented",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": []
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria unknown — re-derive and re-verify",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Migrated from schema v1 (status: pass). v1 evidence: src/openjarvis/sandbox/"
+    },
+    {
+      "id": "F-018",
+      "title": "Cron scheduler and daemon",
+      "description": "",
+      "priority": "required",
+      "dependencies": [],
+      "status": "implemented",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": []
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria unknown — re-derive and re-verify",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Migrated from schema v1 (status: pass). v1 evidence: src/openjarvis/cli/scheduler_cmd.py"
+    },
+    {
+      "id": "F-019",
+      "title": "MCP and A2A protocols",
+      "description": "",
+      "priority": "required",
+      "dependencies": [],
+      "status": "implemented",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": []
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria unknown — re-derive and re-verify",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Migrated from schema v1 (status: pass). v1 evidence: src/openjarvis/mcp/; src/openjarvis/a2a/server.py"
+    },
+    {
+      "id": "F-020",
+      "title": "Speech-to-text and voice",
+      "description": "",
+      "priority": "required",
+      "dependencies": [],
+      "status": "implemented",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": []
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria unknown — re-derive and re-verify",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Migrated from schema v1 (status: pass). v1 evidence: src/openjarvis/speech/faster_whisper.py"
+    },
+    {
+      "id": "F-021",
+      "title": "Tech-focused morning digest (7am IST, Indian voice)",
+      "description": "Daily 07:00 Asia/Kolkata spoken digest with Messages (gmail, notion), Calendar (gcalendar), and World (hackernews, news_rss filtered to tech-industry keywords), read by a Cartesia Indian-English female voice. Adds an optional keyword filter to the news_rss connector.",
+      "priority": "required",
+      "dependencies": [
+        "F-002",
+        "F-010",
+        "F-018",
+        "F-020"
+      ],
+      "status": "verified",
+      "design": {
+        "status": "agreed",
+        "risk": "escalated",
+        "summary": "Agreed 2026-10-04 via approved plan. news_rss.json gains optional keywords; configure(feeds, keywords=None) normalizes and persists them; sync() scans ~30 items per feed when keywords are set and keeps at most 5 case-insensitive whole-word matches on title/description, unchanged behavior otherwise. connectors_router passes req.config['keywords'] (list of strings, else 400). No frontend change. Local config: sections messages(gmail, notion), calendar(gcalendar), world(hackernews, news_rss); cron 0 7 * * * Asia/Kolkata; tts_backend cartesia with an Indian-English female voice_id.",
+        "open_questions": [
+          "Which Cartesia voice ID: needs CARTESIA_API_KEY to query the voice catalog."
+        ],
+        "decision_refs": [
+          "D-001",
+          "D-002",
+          "D-003",
+          "D-004",
+          "D-005",
+          "D-016"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "news_rss unit tests show only keyword-matching items are returned, at most 5 per feed, and behavior is unchanged when no keywords are configured.",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "uv run pytest tests/connectors/test_news_rss.py tests/connectors/test_news_rss_keywords.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-10-04T13:26:02Z",
+              "note": "27 passed. Adds: keywords inside HTML markup do not match, matches past the 200-char storage cut are found, configure(keywords=None) keeps saved keywords and [] clears them (so the feeds-only connect UI cannot drop the filter)."
+            }
+          ]
+        },
+        {
+          "id": "AC-002",
+          "statement": "The connectors API accepts and persists news_rss keywords and rejects a keywords value that is not a list of strings.",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "uv run pytest tests/server/test_connectors_router_news_rss.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-10-04T13:26:02Z",
+              "note": "4 passed, hermetic. Router now only passes keywords through; the connector's ValueError becomes the 400 (duplicate router validation removed after the Cursor architecture audit)."
+            }
+          ]
+        },
+        {
+          "id": "AC-003",
+          "statement": "The loaded DigestConfig resolves exactly gmail, notion, gcalendar, hackernews, news_rss across the messages, calendar, and world sections.",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "uv run python -c \"from openjarvis.core.config import load_config; from openjarvis.agents.morning_digest import MorningDigestAgent; d=load_config().digest; ss={s: getattr(d, s).sources for s in d.sections}; a=MorningDigestAgent.__new__(MorningDigestAgent); a._sections=d.sections; a._section_sources=ss; got=sorted(a._resolve_sources()); assert got==['gcalendar','gmail','hackernews','news_rss','notion'], got\"",
+              "exit_code": 0,
+              "timestamp": "2026-10-04T12:56:17Z",
+              "note": "Against the real ~/.openjarvis/config.toml. Live news_rss sync with the configured tech feeds and keywords returned 20 matching items (5 each from TechCrunch, The Verge, Ars Technica, ET Tech)."
+            }
+          ]
+        },
+        {
+          "id": "AC-004",
+          "statement": "jarvis digest --schedule \"\" shows the schedule enabled with cron 0 7 * * *, and an active scheduler task exists for timezone Asia/Kolkata.",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "uv run jarvis digest --schedule \"0 7 * * *\" && uv run jarvis digest --schedule \"\"",
+              "exit_code": 0,
+              "timestamp": "2026-10-04T12:54:00Z",
+              "note": "Output: 'Digest schedule: enabled / Cron: 0 7 * * * / Timezone: Asia/Kolkata'. SchedulerStore shows active morning_digest task 560d3f7f53244ca2, cron 0 7 * * *, metadata timezone Asia/Kolkata, next_run 2026-10-05T01:30:00+00:00 (07:00 IST)."
+            }
+          ]
+        },
+        {
+          "id": "AC-005",
+          "statement": "jarvis digest --fresh produces audio with the chosen Cartesia Indian-English female voice (manual: voice ID recorded and listening confirmation from the user).",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "manual",
+              "observation": "Not run: CARTESIA_API_KEY is unset and gmail, notion, gcalendar report is_connected() == False. voice_id left empty in config (Cartesia would fall back to its default male voice).",
+              "timestamp": "2026-10-04T12:56:22Z"
+            },
+            {
+              "type": "command",
+              "command": "set -a; source .env; set +a; uv run jarvis digest --fresh",
+              "exit_code": 0,
+              "observation": "Voice f8f5f1b2-f02d-4d8e-a40d-fd850a487b3d ('Kiara - Joyful Woman', en, feminine, 'Indian accented') verified via GET /voices and set as digest.voice_id. First run produced no audio: Cartesia returned 400 'Model sunsetted' for model 'sonic'; fixed default to 'sonic-3', CLI Path('') false-positive and un-joined playback thread. Rerun wrote 829485-byte mp3 to ~/.openjarvis/digests and played to completion (77s). Awaiting user listening confirmation. gmail/gcalendar return 403 SERVICE_DISABLED (APIs disabled in Google Cloud project 779450089686); notion, hackernews, news_rss OK.",
+              "timestamp": "2026-10-04T13:52:00Z"
+            },
+            {
+              "type": "manual",
+              "timestamp": "2026-10-11T11:01:00Z",
+              "observation": "User confirmed hearing the 16:13 IST scheduled digest in the Cartesia 'Kiara - Joyful Woman' voice (voice_id f8f5f1b2-f02d-4d8e-a40d-fd850a487b3d, Indian-accented English female).",
+              "observed": "User heard the 16:13 IST scheduled digest spoken in the Kiara voice."
+            }
+          ]
+        },
+        {
+          "id": "AC-006",
+          "statement": "All hard gates pass (test, integration, smoke, security, architecture-review, validate-harness); a gate that could not run is recorded as blocked, not passed.",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID OPENJARVIS_NO_UPDATE_CHECK=1 scripts/test.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:35:36Z",
+              "note": "9153 passed, 65 skipped. (An earlier run on this tree failed once on a pre-existing thread-timing race in tests/server/test_deep_research_tools_wiring.py, untouched by this branch; it passes in isolation 3/3 and on rerun.)"
+            },
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID OPENJARVIS_NO_UPDATE_CHECK=1 scripts/integration.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:35:43Z",
+              "note": "50 passed, 7 skipped."
+            },
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID OPENJARVIS_NO_UPDATE_CHECK=1 scripts/smoke.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:35:46Z",
+              "note": "13 passed, 0 failures."
+            },
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID OPENJARVIS_NO_UPDATE_CHECK=1 scripts/security.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:36:12Z"
+            },
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID OPENJARVIS_NO_UPDATE_CHECK=1 scripts/validate-harness.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:36:13Z"
+            },
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID OPENJARVIS_NO_UPDATE_CHECK=1 scripts/architecture-review.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:37:03Z",
+              "note": "Radon + LLM audit PASS (report 2026-10-11T11:36:13Z). No LOC/import gates per D-014/D-016."
+            }
+          ]
+        }
+      ],
+      "verification": {
+        "commands": [
+          "uv run pytest tests/connectors/test_news_rss.py tests/connectors/test_news_rss_keywords.py -q",
+          "uv run pytest tests/server/test_connectors_router_news_rss.py -q",
+          "scripts/test.sh",
+          "scripts/integration.sh",
+          "scripts/smoke.sh",
+          "scripts/security.sh",
+          "scripts/architecture-review.sh",
+          "scripts/validate-harness.sh"
+        ],
+        "manual_checks": [
+          "jarvis digest --fresh plays a Cartesia Indian-English female voice (user listening confirmation)"
+        ],
+        "last_verified_at": "2026-10-11T11:40:00Z"
+      },
+      "blocker": null,
+      "note": "Code and local config done. AI reviews now run through cursor-agent. Waiting on user credentials for AC-005. | 2026-10-11 final: all gates green on the final tree; verified."
+    },
+    {
+      "id": "F-022",
+      "title": "jarvis connect accepts pasted tokens for token-based connectors",
+      "description": "jarvis connect notion/slack/granola dead-ended with 'No OAuth provider configured'. Connectors that take a pasted token declare paste_token_hint; the CLI prompts (hidden input) and saves through handle_callback. Others without a provider point to the web UI.",
+      "priority": "required",
+      "dependencies": [
+        "F-010"
+      ],
+      "status": "verified",
+      "design": {
+        "status": "agreed",
+        "risk": "light",
+        "summary": "Agreed 2026-10-04 (user chose the paste-token option). paste_token_hint class attribute on notion, slack, granola connectors; CLI oauth branch falls back to hidden token prompt + instance.handle_callback when get_provider_for_connector returns None and a hint exists; otherwise prints a web-UI pointer.",
+        "open_questions": [],
+        "decision_refs": [
+          "D-006",
+          "D-007",
+          "D-017"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "jarvis connect <source> for a connector with accepts_pasted_token = True shows its paste_token_hint (if any), prompts with hidden input, and passes the stripped token to handle_callback; a blank paste is rejected without calling handle_callback (D-017).",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID uv run pytest tests/cli/test_connect.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:39:32Z",
+              "note": "14 passed: paste flow saves via handle_callback; blank paste prints 'No token entered' and never calls handle_callback; empty hint still prompts when the flag is set."
+            },
+            {
+              "type": "manual",
+              "observation": "printf 'fake-token\\n' | OPENJARVIS_HOME=<tmp> uv run jarvis connect notion printed the Notion hint and 'notion connected successfully'; <tmp>/connectors/notion.json written with mode 0600; real ~/.openjarvis untouched.",
+              "timestamp": "2026-10-04T13:30:00Z"
+            }
+          ]
+        },
+        {
+          "id": "AC-002",
+          "statement": "A handle_callback failure is reported as 'Saving the token failed' without a traceback; connectors that do not accept pasted tokens and have no OAuth provider get a web-UI message and are never prompted, even if they declare a hint (D-017).",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID uv run pytest tests/cli/test_connect.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:39:32Z",
+              "note": "test_connect_paste_token_reports_rejected_token, test_connect_paste_failure_is_not_reported_as_oauth_failure, test_connect_oauth_without_provider_or_paste_support_points_to_web_ui, test_connect_hint_without_paste_support_does_not_prompt."
+            }
+          ]
+        },
+        {
+          "id": "AC-003",
+          "statement": "notion, slack, and granola set accepts_pasted_token = True with a non-empty paste_token_hint and no OAuth provider; OAuth connectors do not accept pasted tokens (D-017).",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID uv run pytest tests/cli/test_connect.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:39:32Z",
+              "note": "test_paste_token_connectors_declare_a_hint_and_have_no_provider and test_oauth_connectors_do_not_accept_pasted_tokens."
+            }
+          ]
+        },
+        {
+          "id": "AC-004",
+          "statement": "Hard gates pass (test, integration, smoke, security, validate-harness; architecture-review LLM audit).",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID OPENJARVIS_NO_UPDATE_CHECK=1 scripts/test.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:35:36Z",
+              "note": "9153 passed, 65 skipped. (An earlier run on this tree failed once on a pre-existing thread-timing race in tests/server/test_deep_research_tools_wiring.py, untouched by this branch; it passes in isolation 3/3 and on rerun.)"
+            },
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID OPENJARVIS_NO_UPDATE_CHECK=1 scripts/integration.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:35:43Z",
+              "note": "50 passed, 7 skipped."
+            },
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID OPENJARVIS_NO_UPDATE_CHECK=1 scripts/smoke.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:35:46Z",
+              "note": "13 passed, 0 failures."
+            },
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID OPENJARVIS_NO_UPDATE_CHECK=1 scripts/security.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:36:12Z"
+            },
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID OPENJARVIS_NO_UPDATE_CHECK=1 scripts/validate-harness.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:36:13Z"
+            },
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID OPENJARVIS_NO_UPDATE_CHECK=1 scripts/architecture-review.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:37:03Z",
+              "note": "Radon + LLM audit PASS (report 2026-10-11T11:36:13Z). No LOC/import gates per D-014/D-016."
+            }
+          ]
+        }
+      ],
+      "verification": {
+        "commands": [
+          "uv run pytest tests/cli/test_connect.py -q",
+          "scripts/test.sh"
+        ],
+        "manual_checks": [
+          "jarvis connect notion in a temp OPENJARVIS_HOME"
+        ],
+        "last_verified_at": "2026-10-11T11:40:00Z"
+      },
+      "blocker": null,
+      "note": "Works; not marked verified because AC-004 fails on the architecture audit, accepted as a trade-off in D-007. | 2026-10-11 final: all gates green on the final tree; verified."
+    },
+    {
+      "id": "F-023",
+      "title": "Web UI persists pasted tokens for token-based connectors",
+      "description": "POST /v1/connectors/{id}/connect sets instance._token in memory when the connector has a _token attribute, so a Notion token pasted in the web UI is lost on server restart. Route pasted tokens through the connector's handle_callback (as the CLI does since F-022) so they are validated and saved.",
+      "priority": "required",
+      "dependencies": [
+        "F-022"
+      ],
+      "status": "todo",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [
+          "Should the router and CLI share one connector-side 'accept pasted token' method (raised by the F-022 architecture audit)?"
+        ],
+        "decision_refs": [
+          "D-007"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria to be agreed in design-consensus",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": ""
+    },
+    {
+      "id": "F-024",
+      "title": "Scheduled digest actually runs and plays at 07:00",
+      "description": "The 07:00 IST digest task (scheduler.db, agent morning_digest) never runs: `jarvis serve` does not start the TaskScheduler, and `jarvis scheduler start` builds TaskScheduler without a JarvisSystem so every due task is logged as '[dry-run] Would execute'. Make the scheduler daemon execute tasks for real, run it as a background service with the Cartesia key available, and speak the digest aloud when the scheduled run completes.",
+      "priority": "required",
+      "dependencies": [
+        "F-021"
+      ],
+      "status": "verified",
+      "design": {
+        "status": "agreed",
+        "risk": "escalated",
+        "summary": "`jarvis scheduler start` becomes the single real runner of scheduled tasks (fresh JarvisSystem per run via a small OnDemandSystem adapter; serve does not run tasks; lock file against a second instance; run log stores text; next_run advanced before execution). Installed as a launchd LaunchAgent via `jarvis scheduler start --install`/--uninstall/status, reusing daemon/service.py plist generation, logs in ~/.openjarvis/logs. Key loaded from ~/.openjarvis/credentials.toml (install offers to copy from shell), never in the plist. Unattended scope limited by scheduler.allowed_agents and scheduler.allowed_tools (empty default); scheduler tools never wired to the daemon's scheduler. Per-task metadata.misfire_grace_minutes (digest: 180) skips stale runs. Digest-owned listener on SCHEDULER_TASK_END plays fresh audio when digest.autoplay (default false) is true; shared playback helper moved out of digest_cmd.",
+        "open_questions": [],
+        "decision_refs": [
+          "D-008",
+          "D-009",
+          "D-010",
+          "D-011",
+          "D-012",
+          "D-013",
+          "D-014",
+          "D-015",
+          "D-016",
+          "D-017"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "`jarvis scheduler start` executes a due, allowlisted task against a real system (fake system in tests), logs the reply as text, and advances next_run before execution so a failing or crashing run is not repeated in the same slot.",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID uv run pytest tests/scheduler/test_scheduler_execution.py tests/scheduler/test_store.py tests/scheduler/test_runtime.py tests/scheduler/test_run_now.py tests/integration/test_scheduler_daemon.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T10:26:10Z",
+              "note": "78 passed: dict reply stored as content text; next_run already advanced (compare-and-set claim_task) when the fake ask runs; failing ask -> outcome failed, slot not re-run; log_run crash swallowed without re-run; lost claim does not run; error dict -> failed; OnDemandSystem builds a fresh system per ask, loads credentials, closes it; run_now for manual runs. Integration: tmp scheduler.db, one due task, one run_pending() -> run logged as 'hi', next_run moved."
+            },
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID scripts/integration.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T10:21:00Z",
+              "note": "50 passed, 7 skipped (includes tests/integration/test_scheduler_daemon.py)."
+            }
+          ]
+        },
+        {
+          "id": "AC-002",
+          "statement": "Tasks whose agent is not in scheduler.allowed_agents are skipped and logged; in unattended runs only tools in scheduler.allowed_tools are available (including tools the orchestrator injects for morning_digest); the daemon never wires a scheduler into the schedule-task tools.",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID uv run pytest tests/scheduler/test_policy.py tests/security/test_tool_allowlist.py tests/system/test_orchestrator_tool_allowlist.py tests/core/test_config_unattended.py tests/scheduler/test_tools.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T10:26:10Z",
+              "note": "78 passed: agent not in scheduler.allowed_agents -> outcome skipped, ask never called (one-shot tasks paused, recoverable via resume); empty allowlists deny everything; process-wide tool allowlist enforced in ToolExecutor.execute (covers orchestrator-injected digest_collect/text_to_speech, tools agents add themselves, execute_secured_tool) and refusals published as CAPABILITY_DENIED -> audited TOOL_BLOCKED; orchestrator withholds disallowed tools from the model. OnDemandSystem builds with .scheduler(False) so ScheduleTaskTool has no scheduler in the daemon. Not covered by allowed_tools (documented): agents driving external CLIs (claude_code, opencode) and hybrid agents' direct tool calls; allowed_agents guards them."
+            }
+          ]
+        },
+        {
+          "id": "AC-003",
+          "statement": "A task later than metadata.misfire_grace_minutes is skipped and logged as missed and next_run advances; within the window it runs; tasks without the setting still catch up. `jarvis digest --schedule` creates the digest task with a 180-minute window.",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID uv run pytest tests/scheduler/test_policy.py tests/scheduler/test_digest_schedule.py tests/scheduler/test_scheduler_execution.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T10:26:10Z",
+              "note": "67 passed: later than metadata.misfire_grace_minutes -> outcome missed and next_run advanced; within window runs; no/invalid setting catches up; jarvis digest --schedule (and /digest/schedule via _create_scheduler_task) sets misfire_grace_minutes 180 and honours scheduler.db_path."
+            }
+          ]
+        },
+        {
+          "id": "AC-004",
+          "statement": "After a successful scheduled morning_digest run with digest.autoplay true, the listener plays the fresh audio file; it does nothing when autoplay is false, the run failed, the agent differs, or there is no fresh audio file. digest.autoplay defaults to false.",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID uv run pytest tests/agents/test_digest_playback.py tests/speech/test_playback.py tests/cli/test_digest_cmd.py tests/integration/test_scheduler_daemon.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T10:26:10Z",
+              "note": "38 passed: DigestAutoplay plays the fresh audio once on a successful scheduled morning_digest run with digest.autoplay true; no playback when autoplay false, run failed/skipped/missed, agent differs, artifact older than run start, audio_path Path(''), missing file or no artifact; DigestConfig().autoplay is False; play_audio uses argv lists (no shell), never raises (NUL-byte path regression test); digest --fresh --text-only does not play."
+            }
+          ]
+        },
+        {
+          "id": "AC-005",
+          "statement": "`jarvis scheduler start --install` writes a launchd plist (RunAtLoad, KeepAlive, absolute jarvis path, logs under ~/.openjarvis/logs) with no secrets; --uninstall removes it; the daemon loads credentials.toml; a second scheduler instance is refused by the lock.",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID uv run pytest tests/daemon/test_service.py tests/daemon/test_scheduler_service.py tests/cli/test_scheduler_service_cmd.py tests/core/test_credentials.py tests/scheduler/test_runtime.py tests/agents/test_morning_digest.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T10:26:10Z",
+              "note": "88 passed, all with tmp paths and a fake launchctl runner: --install writes a plist with Label com.openjarvis.scheduler, absolute jarvis ProgramArguments, RunAtLoad, KeepAlive {SuccessfulExit: false}, ThrottleInterval 30, logs <home>/logs/scheduler.{out,err}.log and no EnvironmentVariables/secret; key copy only after explicit confirm (default No, only when tts_backend is cartesia) into credentials.toml with mode 0600; persona copy offer; --uninstall removes the plist; status reports installed/loaded/running; OnDemandSystem injects credentials.toml before each build; a second instance is refused by the fcntl lock ('A scheduler is already running ...; nothing to do.', exit 0 so launchd does not respawn). No real ~/.openjarvis, ~/Library/LaunchAgents or launchctl used."
+            }
+          ]
+        },
+        {
+          "id": "AC-006",
+          "statement": "Manual: with the service installed and a digest task scheduled ~2 minutes ahead, the digest is generated and spoken aloud on the Mac without any terminal command (user listening confirmation).",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "manual",
+              "timestamp": "2026-10-11T10:55:00Z",
+              "observation": "Installed via `jarvis scheduler start --install` (plist has no EnvironmentVariables/secrets; key copied to ~/.openjarvis/credentials.toml mode 600). `jarvis scheduler status`: installed/loaded/running yes. One-off task 8a0428f9d37d4415 (once, +2 min, agent morning_digest) ran from the launchd service with no terminal command: log 'scheduled run ... outcome=success permitted_tools=[digest_collect, text_to_speech] duration_s=41.0', orchestrator withheld code_interpreter/file_read/shell_exec/web_search, then 'Playing scheduled digest audio .../good-day-sir-...-f5571c6a.mp3' (915117 bytes). task_run_logs success=1 outcome=success. Awaiting user's listening confirmation."
+            },
+            {
+              "type": "manual",
+              "timestamp": "2026-10-11T11:01:00Z",
+              "observation": "User confirmed hearing the digest spoken at 16:13 IST, produced by the launchd scheduler service from one-off task 8a0428f9d37d4415 with no terminal command.",
+              "observed": "User heard the 16:13 IST scheduled digest spoken in the Kiara voice."
+            }
+          ]
+        },
+        {
+          "id": "AC-007",
+          "statement": "Hard gates test, integration, smoke, security, architecture-review, validate-harness pass (or only previously accepted debt); soft gates lint and code-review run and reviewed; scheduler docs updated (docs/user-guide/scheduler.md, scheduled-monitor.md, getting-started/quickstart.md, tutorials/scheduled-ops.md).",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID OPENJARVIS_NO_UPDATE_CHECK=1 scripts/test.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:35:36Z",
+              "note": "9153 passed, 65 skipped. (An earlier run on this tree failed once on a pre-existing thread-timing race in tests/server/test_deep_research_tools_wiring.py, untouched by this branch; it passes in isolation 3/3 and on rerun.)"
+            },
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID OPENJARVIS_NO_UPDATE_CHECK=1 scripts/integration.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:35:43Z",
+              "note": "50 passed, 7 skipped."
+            },
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID OPENJARVIS_NO_UPDATE_CHECK=1 scripts/smoke.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:35:46Z",
+              "note": "13 passed, 0 failures."
+            },
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID OPENJARVIS_NO_UPDATE_CHECK=1 scripts/security.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:36:12Z"
+            },
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID OPENJARVIS_NO_UPDATE_CHECK=1 scripts/validate-harness.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:36:13Z"
+            },
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID OPENJARVIS_NO_UPDATE_CHECK=1 scripts/lint.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:36:13Z",
+              "note": "Soft gate."
+            },
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID OPENJARVIS_NO_UPDATE_CHECK=1 scripts/architecture-review.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:37:03Z",
+              "note": "Radon + LLM audit PASS (report 2026-10-11T11:36:13Z). No LOC/import gates per D-014/D-016."
+            },
+            {
+              "type": "command",
+              "command": "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID OPENJARVIS_NO_UPDATE_CHECK=1 scripts/code-review.sh",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T11:39:19Z",
+              "note": "Soft gate, reviewed: no merge-blocking bugs. Open items recorded as follow-ups in session-handoff.md (uv.lock bumps, Notion token validation, relative db_path, interrupted-run record, log_run signature, unattended-scheduler entry point)."
+            }
+          ]
+        }
+      ],
+      "verification": {
+        "commands": [
+          "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID scripts/test.sh",
+          "env -u CARTESIA_API_KEY -u CARTESIA_VOICE_ID scripts/integration.sh",
+          "OPENJARVIS_NO_UPDATE_CHECK=1 scripts/smoke.sh",
+          "scripts/security.sh",
+          "scripts/validate-harness.sh",
+          "scripts/architecture-review.sh",
+          "scripts/lint.sh",
+          "scripts/code-review.sh"
+        ],
+        "manual_checks": [
+          "AC-006: install service (jarvis scheduler start --install), recreate digest task (jarvis digest --schedule) so it gets the 180-min window, set [scheduler] allowed_agents=[\"morning_digest\"], allowed_tools=[\"digest_collect\",\"text_to_speech\"] and digest.autoplay=true in ~/.openjarvis/config.toml, schedule ~2 min ahead, listen."
+        ],
+        "last_verified_at": "2026-10-11T11:40:00Z"
+      },
+      "blocker": null,
+      "note": "Evidence 2026-10-11: task 560d3f7f53244ca2 last_run empty, next_run still 2026-10-05T01:30Z although `jarvis serve` (pid 35464) has run since 2026-10-04 19:26 IST; task_run_logs empty. User chose: speak aloud at 07:00, via a proper scheduler fix. | 2026-10-11 orchestrator: implemented; AC-001..AC-005 pass; AC-006 pending (manual, main session); AC-007 fail only on architecture-review (oversize pre-existing files touched + non-converging LLM audit) pending user decision. | 2026-10-11 final: all gates green on the final tree; verified."
+    },
+    {
+      "id": "F-025",
+      "title": "WhatsApp business updates in the morning digest",
+      "description": "Many businesses in India send order, delivery, appointment, travel and bill-due updates on WhatsApp. Add them to the morning digest as their own section, read locally from the WhatsApp Mac app's database, from business accounts only, with personal chats strictly excluded and sensitive details redacted.",
+      "priority": "required",
+      "dependencies": [
+        "F-021",
+        "F-024",
+        "F-027",
+        "F-028"
+      ],
+      "status": "todo",
+      "design": {
+        "status": "agreed",
+        "risk": "escalated",
+        "summary": "New `whatsapp_desktop` connector (iMessage pattern) reads the WhatsApp Mac app's local data read-only from ~/Library/Group Containers/group.net.whatsapp.WhatsApp.shared/: messages from ChatStorage.sqlite (Apple epoch), business identity from Biz/Biz.sqlite (ZWABIZVERIFIEDNAMEDATA = certified business name with ZVERIFICATIONLEVEL; ZWABIZPROFILEDATA = business profile), account-ID mapping from LID.sqlite (ZWAPHONENUMBERLIDPAIR). One-to-one chats only; certified-name chats included automatically, profile-only chats only after approval, exclude list always wins; groups, status, broadcasts and Channels excluded; personal chats never read for content. One Document per message (author = verified name; metadata business_tier, message_type). A local-engine-only classifier labels each message order/appointment/travel/bill-due/ignore, drops promotions, OTPs and confirmations of payments already made, and redacts card numbers, OTPs and addresses before anything else sees the text. Digest gets a top-level WHATSAPP section after CALENDAR: latest status per order/booking from the last 24h plus due dates and appointments in the next 48h found in the last 14 days, at most ~8 items soonest first, plus an unnamed 'N new businesses awaiting review' line. Only redacted 'business: status' lines reach Cartesia. Fails closed (section skipped) if Ollama is unreachable, the default engine is a cloud model, or the database layout is unrecognised. Scheduler runs `open -g -a WhatsApp` ~15 min before the digest; digest and `jarvis doctor` warn when the newest message is over 12h old. `jarvis whatsapp review` (name, category, last-message date only) writes ~/.openjarvis/whatsapp_businesses.toml (hand-editable). Web UI review is F-026. Export-based `whatsapp` connector unchanged. Schema facts observed read-only on the developer's machine 2026-10-11: 454 one-to-one chats, 82 with certified names, 117 profile-only. Amended after spikes F-027/F-028 (D-027, D-028): template messages decode (body at protobuf 24.1.6 of ZWAMEDIAITEM.ZMETADATA, category at 24.7); messages whose template category is MARKETING are dropped before the local model; profile-only chats that have sent a UTILITY template are pre-approved but listed in `jarvis whatsapp review` for exclusion; business matching uses Biz ZJID and ZPHONENUMBERJID (LID pair table may be empty), unmatched = personal; the launchd service needs no Full Disk Access, but permission errors fail closed and `jarvis doctor` names the interpreter path.",
+        "open_questions": [
+          "Resolved by F-027: type-19 template text is recoverable (body at protobuf path 24.1.6 in 66/68); decode, else 'update from <business>'.",
+          "Resolved by F-028: the launchd scheduler service reads the Group Container without Full Disk Access; still fail closed on permission errors.",
+          "Resolved by D-027: MARKETING-category templates are dropped before the local model.",
+          "Resolved by D-028: profile-only senders of UTILITY templates are pre-approved and reviewable."
+        ],
+        "decision_refs": [
+          "D-018",
+          "D-019",
+          "D-020",
+          "D-021",
+          "D-022",
+          "D-023",
+          "D-024",
+          "D-025",
+          "D-026",
+          "D-027",
+          "D-028"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "Personal chats, groups, WhatsApp Channels, status updates and broadcasts never appear in `whatsapp_desktop` connector output (fixture ChatStorage/Biz/LID databases).",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-002",
+          "statement": "Certified-name business chats are included automatically; profile-only chats that have sent a UTILITY template are pre-approved and listed in `jarvis whatsapp review`; other profile-only chats appear only after approval in whatsapp_businesses.toml; the exclude list overrides all of these; chats not matched to Biz.sqlite by ZJID or ZPHONENUMBERJID are treated as personal.",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-003",
+          "statement": "OTPs, card numbers and addresses are redacted in every digest output and in the text sent to text-to-speech.",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-004",
+          "statement": "Messages whose template category is MARKETING are dropped before the local model runs; other promotions and confirmations of payments already made are dropped by the local classifier; orders and deliveries, appointments and reservations, travel bookings, and bills, recharges, credit card and EMI payments due are kept; template bodies are decoded from ZMETADATA (else 'update from <business>').",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-005",
+          "statement": "The WHATSAPP section comes after CALENDAR, collapses each order or booking to its latest status, includes due dates and appointments in the next 48h found in the last 14 days, caps at about 8 items soonest first, and shows an unnamed 'N new businesses awaiting review' line.",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-006",
+          "statement": "With a cloud default engine, an unreachable Ollama, or an unrecognised database layout, the WHATSAPP section is skipped and no WhatsApp-derived text leaves the device.",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-007",
+          "statement": "The scheduler opens WhatsApp in the background about 15 minutes before the scheduled digest; when the newest message is more than 12h old the digest and `jarvis doctor` warn about it.",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-008",
+          "statement": "`jarvis whatsapp review` lists suggested businesses without message text and persists approve/exclude decisions to ~/.openjarvis/whatsapp_businesses.toml.",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Design agreed 2026-10-11 in design-consensus (design-only session). Next: dispatch orchestrator for F-025, starting with the type-19 decoding spike. | 2026-10-11 spikes F-027/F-028 verified; D-027/D-028 agreed. Ready for orchestrator."
+    },
+    {
+      "id": "F-026",
+      "title": "Web UI review screen for WhatsApp businesses",
+      "description": "A review screen in the web UI / desktop app for approving or excluding WhatsApp business chats suggested by F-025, backed by the same ~/.openjarvis/whatsapp_businesses.toml as `jarvis whatsapp review`.",
+      "priority": "optional",
+      "dependencies": [
+        "F-025"
+      ],
+      "status": "todo",
+      "design": {
+        "status": "pending",
+        "risk": "light",
+        "summary": "",
+        "open_questions": [],
+        "decision_refs": [
+          "D-023"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "acceptance criteria to be agreed in design-consensus",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": ""
+    },
+    {
+      "id": "F-027",
+      "title": "Spike: extract text from WhatsApp template messages (type 19)",
+      "description": "About a third of recent business messages in the WhatsApp Mac app's ChatStorage.sqlite have ZMESSAGETYPE 19, no ZTEXT, and their content in an undocumented protobuf blob in ZWAMEDIAITEM.ZMETADATA. Determine whether a schema-less protobuf walk recovers the message text reliably enough for F-025, and record the field layout.",
+      "priority": "required",
+      "dependencies": [],
+      "status": "verified",
+      "design": {
+        "status": "agreed",
+        "risk": "light",
+        "summary": "Time-boxed spike, requested by the developer 2026-10-11. Read-only access to the developer's WhatsApp Mac databases, certified-business chats only; output is field paths, lengths and redacted previews, never raw message text. Outcome feeds F-025 slice 1.",
+        "open_questions": [],
+        "decision_refs": [
+          "D-018",
+          "D-026"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "A documented answer: which protobuf field(s) of type-19 ZMETADATA hold the human-readable body (and title/footer/buttons if any), the share of type-19 business messages from which non-empty text is recovered, and a recommendation for F-025 (decode, or fall back to 'update from <business>').",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "python3 docs/spikes/whatsapp/decode_type19.py 30",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T17:20:00Z",
+              "note": "68 type-19 messages from certified-business chats (last 30d); body at 24.1.6 in 66/68 (97%); header 24.1.2, footer 24.1.7, buttons 24.1.8.*, template id 24.6, category 24.7 on 68/68. Recommendation: decode (schema-less walk, forcing 24/24.1/24.1.8* as submessages); fall back to 'update from <business>' for the rest. Details: docs/spikes/whatsapp/FINDINGS.md."
+            },
+            {
+              "type": "command",
+              "command": "cd docs/spikes/whatsapp && python3 category_census.py",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T17:20:00Z",
+              "note": "Template category 24.7 (UTILITY/MARKETING) present on message types 13, 19, 20, 24, 41, 42, 43. Certified: 189 UTILITY / 114 MARKETING; profile-only: 292 UTILITY / 120 MARKETING; not in business tables: 1 MARKETING. LID.sqlite ZWAPHONENUMBERLIDPAIR is empty on this machine."
+            }
+          ]
+        }
+      ],
+      "verification": {
+        "commands": [
+          "python3 docs/spikes/whatsapp/decode_type19.py 30",
+          "cd docs/spikes/whatsapp && python3 category_census.py"
+        ],
+        "manual_checks": [],
+        "last_verified_at": "2026-10-11T17:20:00Z"
+      },
+      "blocker": null,
+      "note": "Spike answered. Proposed F-025 amendments (drop MARKETING by category; treat UTILITY-template senders as businesses) need the developer's agreement before they change the design."
+    },
+    {
+      "id": "F-028",
+      "title": "Spike: can the launchd scheduler service read WhatsApp's Group Container?",
+      "description": "The digest runs from the launchd scheduler service (D-009, `~/.openjarvis/.venv/bin/jarvis` interpreted by the venv Python). macOS may block that process from reading ~/Library/Group Containers/group.net.whatsapp.WhatsApp.shared/ (Full Disk Access or 'access data from other apps' consent). Determine whether it can, and what the user must grant if not.",
+      "priority": "required",
+      "dependencies": [],
+      "status": "verified",
+      "design": {
+        "status": "agreed",
+        "risk": "light",
+        "summary": "Time-boxed spike, requested by the developer 2026-10-11. Run a temporary, self-removing launchd LaunchAgent using the same venv Python as the scheduler service; it opens ChatStorage.sqlite and Biz.sqlite read-only and logs only table counts. Remove the agent afterwards.",
+        "open_questions": [],
+        "decision_refs": [
+          "D-009",
+          "D-018"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "A documented answer, from a real launchd-launched process using the scheduler's interpreter: can it open ChatStorage.sqlite and Biz/Biz.sqlite read-only, and if not, which macOS permission fixes it and how F-025 should detect and report the missing permission.",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "launchctl bootstrap gui/$(id -u) /tmp/wa_spike/com.openjarvis.spike-wa-access.plist && cat /tmp/wa_spike/launchd_result.txt && launchctl bootout gui/$(id -u)/com.openjarvis.spike-wa-access",
+              "exit_code": 0,
+              "timestamp": "2026-10-11T17:25:00Z",
+              "note": "launchd job (ppid=1) with /Users/sughoshdivanji/.openjarvis/.venv/bin/python -> uv cpython-3.13.1: listdir OK (1.58s first access), ChatStorage.ZWACHATSESSION 558, Biz.ZWABIZVERIFIEDNAMEDATA 199, LID.ZWAPHONENUMBERLIDPAIR 0, all read-only, no macOS prompt; TCC.db open FAILED (no Full Disk Access) -> none needed. Job removed afterwards. F-025 must still fail closed on PermissionError / 'unable to open database file' and have `jarvis doctor` name the interpreter's realpath for Full Disk Access. Details: docs/spikes/whatsapp/FINDINGS.md."
+            }
+          ]
+        }
+      ],
+      "verification": {
+        "commands": [
+          "launchctl bootstrap gui/$(id -u) docs/spikes/whatsapp/com.openjarvis.spike-wa-access.plist (probe copied to /tmp/wa_spike/launchd_probe.py), read /tmp/wa_spike/launchd_result.txt, then launchctl bootout gui/$(id -u)/com.openjarvis.spike-wa-access"
+        ],
+        "manual_checks": [],
+        "last_verified_at": "2026-10-11T17:25:00Z"
+      },
+      "blocker": null,
+      "note": "Spike answered: the scheduler service can read WhatsApp's Group Container on this macOS without Full Disk Access."
+    },
+    {
+      "id": "F-029",
+      "title": "Spike: confirm OpenShell 0.0.21 behaviour on macOS + Podman",
+      "description": "Time-boxed spike that confirms the OpenShell behaviour the sandbox design relies on, before building it. Findings go in docs/spikes/openshell/FINDINGS.md.",
+      "priority": "required",
+      "dependencies": [],
+      "status": "verified",
+      "design": {
+        "status": "agreed",
+        "risk": "escalated",
+        "summary": "Measure sandbox creation time through the gateway on macOS with Podman; confirm `openshell policy set` changes a live sandbox's network policy; check whether a provider can be attached after creation; confirm the gateway's inference upstream can point at OpenJarvis /v1/chat/completions; check whether a deny-all sandbox can make any network call between creation and policy application.",
+        "open_questions": [
+          "Can the host /v1 endpoint be restricted to the gateway only?"
+        ],
+        "decision_refs": [
+          "D-031",
+          "D-038"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "Sandbox creation time (cold and warm image) is measured and recorded in docs/spikes/openshell/FINDINGS.md",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "python3 docs/spikes/openshell/time_create.py base 5 docs/spikes/openshell/policies/deny_all.yaml",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T13:40:00Z",
+              "note": "Cached base image: create median 2.0 s (1.9-2.7 s); cold first pull of the 1.13 GB base image took 29 min 20 s. OpenJarvis image cold time not measured: OpenShell cannot build Dockerfile.sandbox as-is (Finding B3). Details: docs/spikes/openshell/FINDINGS.md#q1-how-long-does-creating-a-sandbox-take"
+            }
+          ]
+        },
+        {
+          "id": "AC-002",
+          "statement": "A live sandbox's network policy is changed with `openshell policy set` and the change is observed to take effect (allowed host reachable, other hosts blocked)",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "openshell policy set --policy docs/spikes/openshell/policies/allow_example.yaml --wait oj-spike-deny (then deny_all.yaml), probing with net_probe.sh over SSH",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T13:40:00Z",
+              "note": "example.com went BLOCKED -> ALLOWED -> BLOCKED on the live sandbox while pypi.org and curl stayed BLOCKED; each policy set took 2-10 s. Details: docs/spikes/openshell/FINDINGS.md#q3-does-openshell-policy-set-change-a-live-sandboxs-network-policy"
+            }
+          ]
+        },
+        {
+          "id": "AC-003",
+          "statement": "Whether a provider can be attached to an existing sandbox is recorded, with the command and output",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "openshell sandbox --help; openshell settings --help; openshell provider update oj-spike-dummy --credential SPIKE_TOKEN=spike-dummy-token-ROTATED, then curl httpbin.org/headers from the running and a new sandbox",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T13:40:00Z",
+              "note": "No command attaches a provider to a running sandbox, and credentials are fixed at creation (running sandbox kept the old value, a new one got the rotated value). Recorded as REFUTED. Details: docs/spikes/openshell/FINDINGS.md#q4-can-a-provider-be-attached-after-a-sandbox-is-created"
+            }
+          ]
+        },
+        {
+          "id": "AC-004",
+          "statement": "An agent inside a sandbox completes a chat call through the OpenShell inference gateway with OpenJarvis /v1/chat/completions as upstream",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "openshell inference set --provider oj-spike-jarvis --model qwen3.5:2b (OPENAI_BASE_URL=http://host.openshell.internal:8000/v1); then infer_probe.py in a deny-all sandbox",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T13:40:00Z",
+              "note": "https://inference.local/v1/chat/completions returned 200 with content 'ok' and no keys in the sandbox; telemetry.db went 37 -> 38 rows (model qwen3.5:2b, engine ollama). Details: docs/spikes/openshell/FINDINGS.md#q5-can-the-inference-gateway-forward-to-openjarvis-v1-and-can-that-endpoint-be-limited-to-the-gateway"
+            }
+          ]
+        },
+        {
+          "id": "AC-005",
+          "statement": "A deny-all pooled sandbox is shown to have no network access before its agent policy is applied",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "openshell sandbox create --name oj-spike-deny --from base --policy docs/spikes/openshell/policies/deny_all.yaml --upload docs/spikes/openshell/net_probe.sh:/sandbox -- sh /sandbox/net_probe.sh https://example.com https://pypi.org http://host.containers.internal:11434/api/tags",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T13:40:00Z",
+              "note": "All three BLOCKED from the first command; the default-policy control allowed pypi.org. Details: docs/spikes/openshell/FINDINGS.md#q2-can-a-pooled-deny-all-sandbox-reach-the-network-before-its-policy-is-applied"
+            }
+          ]
+        }
+      ],
+      "verification": {
+        "commands": [
+          "python3 docs/spikes/openshell/time_create.py base 5 docs/spikes/openshell/policies/deny_all.yaml",
+          "openshell policy set --policy docs/spikes/openshell/policies/allow_example.yaml --wait oj-spike-deny (then deny_all.yaml), probing with net_probe.sh over SSH",
+          "openshell sandbox --help; openshell settings --help; openshell provider update oj-spike-dummy --credential SPIKE_TOKEN=spike-dummy-token-ROTATED, then curl httpbin.org/headers from the running and a new sandbox",
+          "openshell inference set --provider oj-spike-jarvis --model qwen3.5:2b (OPENAI_BASE_URL=http://host.openshell.internal:8000/v1); then infer_probe.py in a deny-all sandbox",
+          "openshell sandbox create --name oj-spike-deny --from base --policy docs/spikes/openshell/policies/deny_all.yaml --upload docs/spikes/openshell/net_probe.sh:/sandbox -- sh /sandbox/net_probe.sh https://example.com https://pypi.org http://host.containers.internal:11434/api/tags"
+        ],
+        "manual_checks": [
+          "Findings and implications reviewed in docs/spikes/openshell/FINDINGS.md (developer sign-off 2026-11-01)"
+        ],
+        "last_verified_at": "2026-11-01T19:45:00+05:30"
+      },
+      "blocker": null,
+      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md Spike run 2026-11-01; D-031, D-034 and D-037 need revisiting (see FINDINGS 'Implications')."
+    },
+    {
+      "id": "F-030",
+      "title": "OpenShell runtime for SandboxedAgent with a warm pool",
+      "description": "Add OpenShell as a runtime behind SandboxedAgent so every agent run executes in a single-use sandbox from a pool keyed by agent policy and image, built from a slim dedicated image, inside a dedicated Podman machine, failing closed.",
+      "priority": "required",
+      "dependencies": [
+        "F-029"
+      ],
+      "status": "verified",
+      "design": {
+        "status": "agreed",
+        "risk": "escalated",
+        "summary": "New OpenShell runner selected by [sandbox] runtime = \"openshell\". One pool keyed by (generated agent policy, image digest) with a per-agent pool size (1 for interactive agents such as chat, 0 = create on demand); sandboxes are created with their agent's binary-scoped policy (resolved executables, e.g. /sandbox/.uv/python/**) on a deny-all base, driven over SSH (openshell sandbox ssh-config), used once and deleted; the host checks the policy version before use, cleans up by name prefix at startup, and counts ~35 s pod termination against VM capacity. Slim digest-pinned python:3.12-slim image with a sandbox user, built from its own context with a .dockerignore in a separate build step. Dedicated rootful Podman machine with no macOS folders mounted. Fails closed with jarvis doctor checks (rootful dedicated VM, gateway, image present, creation timeout).",
+        "open_questions": [
+          "RESOLVED: --from <dir> builds once and pushes openshell/sandbox-from:<timestamp> into the cluster; creates from that tag do not rebuild (~1.3 s).",
+          "RESOLVED: the sandbox does not need the openjarvis_rust extension (core imports and the entrypoint run without it).",
+          "Filesystem policy behaviour (untested in the spike)",
+          "Per-sandbox CPU / memory limits",
+          "RESOLVED: scripts/build-openshell-image.sh removes older openshell/sandbox-from images from the cluster after a successful build."
+        ],
+        "decision_refs": [
+          "D-029",
+          "D-030",
+          "D-032",
+          "D-035",
+          "D-036",
+          "D-040",
+          "D-041",
+          "D-042",
+          "D-044",
+          "D-045",
+          "D-046",
+          "D-047"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "With [sandbox] runtime = \"openshell\", every agent run (including chat) executes inside an OpenShell sandbox",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "OPENJARVIS_CONFIG=/tmp/oj-openshell/config.toml uv run jarvis ask --agent simple \"hi\" 2>&1 | rg -o \"Sandbox oj-\\d+-simple-[0-9a-f]+ exited 1: Agent failed: EngineConnectionError: vllm engine at https://inference.local\"",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:27:40Z",
+              "note": "Live, dedicated rootful 'openshell' machine, image openshell/sandbox-from:1793628918. The agent ran inside sandbox oj-31417-simple-c2e0e0f8 and called the gateway, which returned 503 'cluster inference is not configured' (model routing is F-031, per D-045). No oj- sandboxes left afterwards."
+            },
+            {
+              "type": "manual",
+              "observation": "jarvis chat --agent simple driven through a pseudo-terminal (script -q /dev/null) with the same config: the chat turn ran in sandbox oj-31589-simple-25963deb and failed at inference.local with the same 503; no oj- sandboxes left afterwards.",
+              "timestamp": "2026-11-02T14:29:30Z"
+            },
+            {
+              "type": "command",
+              "command": "uv run pytest tests/agents/test_factory.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:22:58Z",
+              "note": "Guard test: every agent construction site (sdk, ask, chat, serve, orchestrator, executor, hybrid runner) goes through build_agent, which wraps in SandboxedAgent when the runtime is openshell. Also covered by scripts/test.sh (9257 passed)."
+            }
+          ]
+        },
+        {
+          "id": "AC-002",
+          "statement": "Sandboxes are drawn from a pool keyed by agent policy and image digest; an agent with pool size 1 gets a pre-created sandbox, pool size 0 creates on demand",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "uv run pytest tests/sandbox/test_openshell_pool.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T14:48:52Z",
+              "note": "14 passed: keyed by policy+image, size 1 pre-creates, size 0 creates on demand, claim does not wait for refill. Live: warm run 0.05-0.07 s vs 2.0 s cold."
+            }
+          ]
+        },
+        {
+          "id": "AC-003",
+          "statement": "Each sandbox is used for exactly one run and deleted afterwards; changing an agent's policy config never hands out a sandbox with the old policy",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "uv run pytest tests/sandbox/test_openshell_pool.py tests/sandbox/test_openshell_runner.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T14:48:52Z",
+              "note": "Sandbox deleted after every run (success, failure, timeout); never handed out twice; a changed policy gets a new sandbox."
+            }
+          ]
+        },
+        {
+          "id": "AC-004",
+          "statement": "The generated policy for an agent allows only that agent's configured hosts and binaries on top of the deny-all base (unit-tested)",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "uv run pytest tests/sandbox/test_openshell_policy.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T14:48:52Z",
+              "note": "17 passed: deny-all base, only configured hosts, one rule scoped to the image's resolved Python, invalid hosts/ports rejected."
+            }
+          ]
+        },
+        {
+          "id": "AC-005",
+          "statement": "The OpenShell image is built from its own context in a separate step, runs as the sandbox user, and its base image is pinned by digest",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "scripts/build-openshell-image.sh",
+              "exit_code": 0,
+              "timestamp": "2026-11-01T14:48:52Z",
+              "note": "Built deploy/openshell (own context, python:3.12-slim pinned by index digest, sandbox user, root-owned venv, offline hash-checked install) and pushed openshell/sandbox-from:1793544465; build_agent(SimpleAgent) under runtime=openshell answered 'pong' from inside the sandbox via the gateway."
+            }
+          ]
+        },
+        {
+          "id": "AC-006",
+          "statement": "With the gateway stopped, the Podman machine not rootful, or the image missing, an agent run is refused with a clear error and no agent code runs on the host",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "OPENJARVIS_CONFIG=/tmp/oj-openshell/missing-image.toml uv run jarvis ask --agent simple \"hi\" 2>&1 | rg \"^OpenShell is not ready: Sandbox image: openshell/sandbox-from:0000000000 not in the cluster; run scripts/build-openshell-image.sh\"",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:31:00Z",
+              "note": "Live missing image: refused in 2.9 s with the build hint; no sandbox was created."
+            },
+            {
+              "type": "manual",
+              "observation": "Live gateway stopped (openshell gateway stop): jarvis ask printed 'OpenShell is not ready: OpenShell gateway: ... Connection refused; Sandbox image: cannot check: gateway not connected' with no traceback (fixed in 977c12be: shutdown skipped when pre-flight never passed, image no longer blamed). After podman --connection openshell-root start openshell-cluster-openshell, the next run executed in a sandbox without restarting OpenJarvis, and the image survived the restart.",
+              "timestamp": "2026-11-02T14:20:00Z"
+            },
+            {
+              "type": "command",
+              "command": "uv run pytest tests/sandbox/test_openshell_runner.py tests/sandbox/test_openshell_preflight.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:22:58Z",
+              "note": "Non-rootful machine, stopped machine, missing machine, gateway down and missing image all refuse; runs never fall back to the host; runs recover once pre-flight passes."
+            }
+          ]
+        },
+        {
+          "id": "AC-007",
+          "statement": "`jarvis doctor` reports the dedicated Podman machine (rootful, no host folders mounted), gateway status, and whether the sandbox image is present",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "command",
+              "command": "OPENJARVIS_CONFIG=/tmp/oj-openshell/config.toml uv run jarvis doctor 2>&1 | rg -c \"✓\\s+│ (OpenShell Podman machine|Host folders mounted in VM|OpenShell gateway|Sandbox image)\"",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:30:30Z",
+              "note": "Prints 4: dedicated machine rootful and running, no host folders mounted, gateway connected, image present."
+            },
+            {
+              "type": "command",
+              "command": "OPENJARVIS_CONFIG=/tmp/oj-openshell/default-machine.toml uv run jarvis doctor 2>&1 | rg \"OpenShell Podman machine|Host folders\"",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:30:30Z",
+              "note": "Pointed at podman-machine-default: fail \"'podman-machine-default' is stopped\" and warn listing /Users, /private, /var/folders mounted (mounts are a warning per the user's choice)."
+            },
+            {
+              "type": "command",
+              "command": "uv run pytest tests/cli/test_doctor_cmd.py tests/sandbox/test_openshell_preflight.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:22:58Z",
+              "note": "Doctor rows map each pre-flight check; rootless, missing, stopped machine and mounted folders covered."
+            }
+          ]
+        },
+        {
+          "id": "AC-008",
+          "statement": "No sandboxes with the OpenJarvis name prefix remain after the host process shuts down or restarts",
+          "status": "pass",
+          "evidence": [
+            {
+              "type": "manual",
+              "observation": "Live, three real processes each starting the shared runner with pool_sizes simple=1: process A (pid 24996) warmed oj-24996-simple-3871ee35 and was killed with SIGKILL; process C (pid 25032) started and deleted A's orphan, leaving its own oj-25032-simple-6b5f0322; process B started and exited normally while C was alive and left C's sandbox alone; when C exited normally, no oj- sandboxes remained. Note: the owner PID is the Python process; killing only a 'uv run' wrapper leaves the Python child (and its sandbox) alive until it exits.",
+              "timestamp": "2026-11-02T14:16:30Z"
+            },
+            {
+              "type": "command",
+              "command": "uv run pytest tests/sandbox/test_openshell_pool.py tests/sandbox/test_openshell_runner.py -q",
+              "exit_code": 0,
+              "timestamp": "2026-11-02T14:22:58Z",
+              "note": "Startup cleanup deletes only sandboxes with no owner PID, a dead owner, or our own PID; shutdown drains the pool."
+            }
+          ]
+        }
+      ],
+      "verification": {
+        "commands": [
+          "uv run pytest tests/sandbox tests/agents/test_factory.py tests/cli/test_doctor_cmd.py -q",
+          "scripts/test.sh",
+          "scripts/integration.sh",
+          "scripts/smoke.sh",
+          "scripts/security.sh",
+          "scripts/architecture-review.sh",
+          "scripts/validate-harness.sh"
+        ],
+        "manual_checks": [
+          "jarvis ask / jarvis chat with runtime = openshell run inside an oj- sandbox (temp config)",
+          "Gateway stopped and missing image: runs refused, then recover without restart",
+          "SIGKILLed owner's sandbox removed by the next process start; live owners' sandboxes kept"
+        ],
+        "last_verified_at": "2026-11-02T14:44:25Z"
+      },
+      "blocker": null,
+      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md | 2026-11-02: verified. All 8 criteria pass with evidence. Hard gates exit 0 on the final tree (73f92549, uv.lock patched per D-047): security (pip-audit: no known vulnerabilities; bandit; gitleaks) 14:41:55Z, test 9257 passed 14:43:17Z, integration 50 passed 14:43:25Z, smoke 14:43:27Z, architecture-review 14:43:47Z, validate-harness 14:43:48Z; soft gates lint clean, code-review reviewed (filelock major bump: py3.10 failure set identical old vs new lock). Sandbox image rebuilt from the patched lock: openshell/sandbox-from:1793630675, live doctor 4 ok rows and jarvis ask ran in oj-40232-simple-28dc8fb5. Known limit: Python 3.10 keeps filelock 4.1.0. Model access inside sandboxes is F-031."
+    },
+    {
+      "id": "F-031",
+      "title": "Sandboxed model calls go through the OpenShell gateway to OpenJarvis",
+      "description": "Sandboxed agents reach models only through the OpenShell inference gateway, whose upstream is a new pass-through model endpoint on the OpenJarvis host with its own key; the host fixes engine and model and enforces a per-run budget, and telemetry is kept and tagged with the agent.",
+      "priority": "required",
+      "dependencies": [
+        "F-030"
+      ],
+      "status": "todo",
+      "design": {
+        "status": "agreed",
+        "risk": "escalated",
+        "summary": "Sandboxes call https://inference.local (handled by the OpenShell proxy) and hold no API keys. The gateway's provider points at a new host pass-through endpoint (no agent wrapping) via http://host.openshell.internal:<port>/v1 with a key that only works on that endpoint. The host chooses engine and model regardless of the request and enforces a per-run budget; telemetry rows record the agent that made the call. The host resets the gateway inference route at startup (there is no inference delete).",
+        "open_questions": [
+          "How the agent identity reaches the host endpoint for telemetry tagging and budgets"
+        ],
+        "decision_refs": [
+          "D-033",
+          "D-043"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "A sandboxed agent's model calls appear in the OpenJarvis telemetry SQLite with tokens, latency, engine and the agent recorded",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-002",
+          "statement": "The pass-through endpoint adds no agent system prompt or tools (prompt tokens match the request)",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-003",
+          "statement": "The gateway's key is rejected by every other OpenJarvis endpoint, and OPENJARVIS_API_KEY is not given to the gateway",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-004",
+          "statement": "A request asking for a different model or engine is served by the host-chosen engine and model",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-005",
+          "statement": "A run that exceeds its budget is refused further model calls",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-006",
+          "statement": "No API key is present in the sandbox environment or filesystem, and the sandbox cannot reach Ollama or the host endpoint directly",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md"
+    },
+    {
+      "id": "F-032",
+      "title": "Host-side connector endpoint with run-scoped keys for sandboxed agents",
+      "description": "Personal-data connectors (Gmail, Calendar, ...) run on the host behind a narrow tool endpoint; sandboxed agents call it with a short-lived, run-scoped key that only allows that agent's allowlisted tool calls; every call is audited; sandboxes never hold a real credential.",
+      "priority": "required",
+      "dependencies": [
+        "F-030"
+      ],
+      "status": "todo",
+      "design": {
+        "status": "agreed",
+        "risk": "escalated",
+        "summary": "A host tool endpoint reachable from sandboxes (planned: http://host.openshell.internal:<port> plus one policy rule). For each run the host issues a run-scoped key, uploaded into the sandbox at claim, valid only for that run and that agent's allowlisted connector tools, revoked when the run ends. Calls are checked against the allowlist and written to the audit log. Connector credentials (refresh and access tokens) stay on the host; OpenShell providers are not used for personal data.",
+        "open_questions": [
+          "Exact transport and port for the host tool endpoint and how it is restricted to sandboxes",
+          "Shape of tool results returned to the sandbox (size limits, redaction)"
+        ],
+        "decision_refs": [
+          "D-039"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "No connector credential (access or refresh token) is present inside a sandbox, in its environment, files, or attached OpenShell providers",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-002",
+          "statement": "A sandboxed agent can call only the connector tools on its allowlist; other tools are refused and logged",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-003",
+          "statement": "A run-scoped key stops working when its run ends and is rejected for any other agent's tools",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-004",
+          "statement": "Every connector call from a sandbox is recorded in the audit log with agent, tool and outcome",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-005",
+          "statement": "The morning digest runs sandboxed and gets its Gmail and Calendar data through the host endpoint",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md"
+    },
+    {
+      "id": "F-033",
+      "title": "Host-side work before and after each sandboxed run",
+      "description": "The host uploads a read-only snapshot of the memory and context a run needs, downloads results, traces and output files, writes them to SQLite, and does host-only work (text-to-speech playback, WhatsApp reading) after the run.",
+      "priority": "required",
+      "dependencies": [
+        "F-030"
+      ],
+      "status": "todo",
+      "design": {
+        "status": "agreed",
+        "risk": "escalated",
+        "summary": "Before a run, the host uploads a read-only snapshot of only the memory and context that run needs. After it, the result, traces and output files (e.g. digest audio) are downloaded and only the host writes to its SQLite databases. Text-to-speech playback and reading the WhatsApp Group Container happen on the host.",
+        "open_questions": [],
+        "decision_refs": [
+          "D-034",
+          "D-036"
+        ]
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC-001",
+          "statement": "A sandboxed agent can read the memory snapshot it was given and cannot write to host SQLite",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-002",
+          "statement": "Results and traces from a sandboxed run are recorded in host SQLite by the host",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-003",
+          "statement": "The morning digest runs sandboxed end to end and its audio plays on the host",
+          "status": "pending",
+          "evidence": []
+        },
+        {
+          "id": "AC-004",
+          "statement": "Output files written by the agent are downloaded to the host before the sandbox is deleted",
+          "status": "pending",
+          "evidence": []
+        }
+      ],
+      "verification": {
+        "commands": [],
+        "manual_checks": [],
+        "last_verified_at": null
+      },
+      "blocker": null,
+      "note": "Design spec: docs/superpowers/specs/2026-11-01-openshell-sandbox-design.md"
+    }
+  ]
+}

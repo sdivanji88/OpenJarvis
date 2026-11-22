@@ -111,7 +111,31 @@ def _connect_source(registry: object, source: str, path: str = "") -> None:
 
             provider = get_provider_for_connector(source)
             if provider is None:
-                console.print(f"[red]No OAuth provider configured for {source}.[/red]")
+                if not connector_cls.accepts_pasted_token:
+                    console.print(
+                        f"[red]No OAuth provider configured for {source}.[/red] "
+                        "Connect it from the web UI instead (`jarvis serve`)."
+                    )
+                    return
+                hint = connector_cls.paste_token_hint
+                if hint:
+                    console.print(f"[cyan]{hint}[/cyan]")
+                token = click.prompt(
+                    f"Paste your {source} token", hide_input=True
+                ).strip()
+                if not token:
+                    console.print(
+                        f"[red]No token entered; {source} not connected.[/red]"
+                    )
+                    return
+                try:
+                    instance.handle_callback(token)
+                except Exception as exc:  # noqa: BLE001
+                    console.print(
+                        f"[red]Saving the token failed for {source}: {exc}[/red]"
+                    )
+                    return
+                console.print(f"[green]{source} connected successfully.[/green]")
                 return
 
             creds = get_client_credentials(provider)

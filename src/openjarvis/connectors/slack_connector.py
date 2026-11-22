@@ -290,6 +290,12 @@ class SlackConnector(BaseConnector):
     connector_id = "slack"
     display_name = "Slack"
     auth_type = "oauth"
+    accepts_pasted_token = True
+    paste_token_hint = (
+        "Create a Slack app at https://api.slack.com/apps, add the User Token "
+        "Scopes it needs, install it to your workspace, and copy the "
+        "User OAuth Token (xoxp-...)."
+    )
 
     def __init__(self, credentials_path: str = "") -> None:
         self._credentials_path = credentials_path or _DEFAULT_CREDENTIALS_PATH

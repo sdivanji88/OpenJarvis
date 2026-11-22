@@ -75,6 +75,11 @@ class BaseConnector(ABC):
     display_name: str
     auth_type: str  # "oauth" | "local" | "bridge" | "filesystem"
     indexed_sources: tuple[str, ...] = ()
+    # True for "oauth" connectors set up by pasting a token or API key into
+    # ``handle_callback`` instead of a browser redirect.
+    accepts_pasted_token: bool = False
+    # Help text shown before the paste prompt (where to get the token).
+    paste_token_hint: str = ""
 
     def knowledge_sources(self) -> tuple[str, ...]:
         """Return KnowledgeStore source values owned by this connector."""
@@ -107,7 +112,11 @@ class BaseConnector(ABC):
         raise NotImplementedError(f"{self.connector_id} does not use OAuth")
 
     def handle_callback(self, code: str) -> None:
-        """Handle the OAuth callback.  Only relevant for auth_type='oauth'."""
+        """Persist an OAuth code, or a pasted token when ``accepts_pasted_token``.
+
+        Only relevant for auth_type='oauth'. Implementations should validate
+        before writing so a bad credential never replaces a working one.
+        """
         raise NotImplementedError(f"{self.connector_id} does not use OAuth")
 
     def mcp_tools(self) -> List[ToolSpec]:

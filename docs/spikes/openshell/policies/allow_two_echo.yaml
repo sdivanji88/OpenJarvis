@@ -1,0 +1,49 @@
+# Spike policy: two TLS-terminated echo hosts, to test whether a provider's
+# placeholder is substituted on every allowed host or only some.
+version: 1
+filesystem_policy:
+  include_workdir: true
+  read_only:
+  - /usr
+  - /lib
+  - /proc
+  - /dev/urandom
+  - /app
+  - /etc
+  - /var/log
+  read_write:
+  - /sandbox
+  - /tmp
+  - /dev/null
+landlock:
+  compatibility: best_effort
+process:
+  run_as_user: sandbox
+  run_as_group: sandbox
+network_policies:
+  echo_a:
+    name: echo-a
+    endpoints:
+    - host: httpbin.org
+      port: 443
+      protocol: rest
+      tls: terminate
+      enforcement: enforce
+      access: full
+    binaries:
+    - path: /sandbox/.venv/bin/python3
+    - path: /sandbox/.uv/python/**
+    - path: /usr/bin/curl
+  echo_b:
+    name: echo-b
+    endpoints:
+    - host: postman-echo.com
+      port: 443
+      protocol: rest
+      tls: terminate
+      enforcement: enforce
+      access: full
+    binaries:
+    - path: /sandbox/.venv/bin/python3
+    - path: /sandbox/.uv/python/**
+    - path: /usr/bin/curl

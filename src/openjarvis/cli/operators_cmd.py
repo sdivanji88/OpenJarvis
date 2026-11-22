@@ -181,19 +181,14 @@ def logs(operator_id: str, lines: int) -> None:
     """Show execution logs for an operator."""
     console = Console(stderr=True)
     try:
-        from openjarvis.core.config import load_config
-        from openjarvis.scheduler.store import SchedulerStore
+        from openjarvis.cli._run_outcome import outcome_cell
+        from openjarvis.scheduler.store import open_default_store
 
-        config = load_config()
-        db_path = config.scheduler.db_path
-        if not db_path:
-            from openjarvis.core.config import DEFAULT_CONFIG_DIR
-
-            db_path = str(DEFAULT_CONFIG_DIR / "scheduler.db")
-
-        store = SchedulerStore(db_path=db_path)
-        task_id = f"operator:{operator_id}"
-        runs = store.get_runs(task_id, limit=lines)
+        store = open_default_store()
+        try:
+            runs = store.get_run_logs(f"operator:{operator_id}", limit=lines)
+        finally:
+            store.close()
 
         if not runs:
             console.print(f"[dim]No logs found for operator {operator_id}[/dim]")
@@ -202,17 +197,15 @@ def logs(operator_id: str, lines: int) -> None:
         table = Table(title=f"Logs for {operator_id}")
         table.add_column("Started", style="dim")
         table.add_column("Finished", style="dim")
-        table.add_column("Success", style="green")
+        table.add_column("Outcome")
         table.add_column("Result", style="cyan", max_width=60)
 
         for run in runs:
-            success = "[green]yes[/green]" if run.get("success") else "[red]no[/red]"
-            result_text = run.get("result", "")[:60]
             table.add_row(
                 run.get("started_at", ""),
-                run.get("finished_at", ""),
-                success,
-                result_text,
+                run.get("finished_at") or "",
+                outcome_cell(run["outcome"]),
+                (run.get("result") or "")[:60],
             )
         console.print(table)
     except Exception as exc:

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import sqlite3
+
 import pytest
 
-from openjarvis.scheduler.store import SchedulerStore
+from openjarvis.scheduler.store import RunOutcome, SchedulerStore, default_store_path
 
 
 @pytest.fixture()
@@ -123,7 +125,7 @@ class TestRunLogs:
             task_id="t1",
             started_at="2026-01-01T00:00:00+00:00",
             finished_at="2026-01-01T00:01:00+00:00",
-            success=True,
+            outcome=RunOutcome.SUCCESS,
             result="Done",
             error="",
         )
@@ -138,7 +140,7 @@ class TestRunLogs:
             task_id="t1",
             started_at="2026-01-01T00:00:00+00:00",
             finished_at="2026-01-01T00:01:00+00:00",
-            success=False,
+            outcome=RunOutcome.FAILED,
             result="",
             error="Connection timeout",
         )
@@ -154,7 +156,7 @@ class TestRunLogs:
                 task_id="t1",
                 started_at=f"2026-01-{i + 1:02d}T00:00:00+00:00",
                 finished_at=f"2026-01-{i + 1:02d}T00:01:00+00:00",
-                success=True,
+                outcome=RunOutcome.SUCCESS,
             )
         logs = store.get_run_logs("t1", limit=5)
         assert len(logs) == 5
@@ -162,3 +164,184 @@ class TestRunLogs:
     def test_get_run_logs_empty(self, store):
         logs = store.get_run_logs("nonexistent")
         assert logs == []
+
+    def test_outcome_is_stored_and_derives_success(self, store):
+        store.save_task(_make_task())
+        store.log_run(
+            "t1", "2026-01-01T00:00:00", "2026-01-01T00:00:01", RunOutcome.SUCCESS
+        )
+        store.log_run(
+            "t1", "2026-01-02T00:00:00", "2026-01-02T00:00:01", RunOutcome.MISSED
+        )
+
+        newest, oldest = store.get_run_logs("t1")
+        assert (newest["outcome"], newest["success"]) == ("missed", 0)
+        assert (oldest["outcome"], oldest["success"]) == ("success", 1)
+
+    def test_log_run_accepts_plain_outcome_string(self, store):
+        store.log_run("t1", "2026-01-01T00:00:00", "2026-01-01T00:00:01", "missed")
+
+        (log,) = store.get_run_logs("t1")
+        assert (log["outcome"], log["success"]) == ("missed", 0)
+
+    @pytest.mark.parametrize("outcome", [True, False, "bogus", ""])
+    def test_log_run_rejects_non_outcome_and_writes_nothing(self, store, outcome):
+        with pytest.raises(ValueError):
+            store.log_run("t1", "2026-01-01T00:00:00", "x", outcome)
+
+        assert store.get_run_logs("t1") == []
+
+    @pytest.mark.parametrize(("success", "expected"), [(1, "success"), (0, "failed")])
+    def test_row_with_empty_outcome_reads_outcome_from_success(
+        self, store, tmp_path, success, expected
+    ):
+        conn = sqlite3.connect(tmp_path / "scheduler_test.db")
+        conn.execute(
+            "INSERT INTO task_run_logs (task_id, started_at, success, outcome) "
+            "VALUES ('t1', '2026-01-01T00:00:00', ?, '')",
+            (success,),
+        )
+        conn.commit()
+        conn.close()
+
+        (log,) = store.get_run_logs("t1")
+        assert log["outcome"] == expected
+        assert log["success"] == success
+
+
+_OLD_LOGS_SCHEMA = """\
+CREATE TABLE task_run_logs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id     TEXT    NOT NULL,
+    started_at  TEXT    NOT NULL,
+    finished_at TEXT,
+    success     INTEGER NOT NULL DEFAULT 0,
+    result      TEXT    NOT NULL DEFAULT '',
+    error       TEXT    NOT NULL DEFAULT ''
+);
+"""
+
+
+class TestOutcomeMigration:
+    def test_old_database_gains_outcome_and_keeps_rows(self, tmp_path):
+        db = tmp_path / "old.db"
+        conn = sqlite3.connect(db)
+        conn.execute(_OLD_LOGS_SCHEMA)
+        conn.execute(
+            "INSERT INTO task_run_logs (task_id, started_at, success, error) "
+            "VALUES ('t1', '2026-01-01T00:00:00', 0, 'boom')"
+        )
+        conn.commit()
+        conn.close()
+
+        store = SchedulerStore(db)
+        try:
+            store.log_run("t1", "2026-01-02T00:00:00", "x", RunOutcome.SUCCESS)
+            newest, old = store.get_run_logs("t1")
+        finally:
+            store.close()
+
+        assert old["error"] == "boom"
+        assert old["outcome"] == "failed"
+        assert newest["outcome"] == "success"
+
+    def test_reopening_a_migrated_database_is_a_no_op(self, tmp_path):
+        db = tmp_path / "s.db"
+        SchedulerStore(db).close()
+
+        SchedulerStore(db).close()
+
+        conn = sqlite3.connect(db)
+        names = [row[1] for row in conn.execute("PRAGMA table_info(task_run_logs)")]
+        conn.close()
+        assert names.count("outcome") == 1
+
+
+# -- Claim (compare-and-set) -------------------------------------------------
+
+_SLOT = "2026-01-01T00:00:00+00:00"
+_NEXT = "2026-01-01T01:00:00+00:00"
+_STARTED = "2026-01-01T00:00:05+00:00"
+
+
+class TestClaimTask:
+    def _claim(self, store, expected=_SLOT, next_run=_NEXT, status="active"):
+        return store.claim_task(
+            "t1",
+            expected_next_run=expected,
+            next_run=next_run,
+            last_run=_STARTED,
+            status=status,
+        )
+
+    def test_claim_advances_schedule(self, store):
+        store.save_task(_make_task(next_run=_SLOT))
+
+        assert self._claim(store) is True
+
+        got = store.get_task("t1")
+        assert got["next_run"] == _NEXT
+        assert got["last_run"] == _STARTED
+        assert got["status"] == "active"
+
+    def test_second_claim_of_same_slot_fails(self, store):
+        store.save_task(_make_task(next_run=_SLOT))
+
+        assert self._claim(store) is True
+        assert self._claim(store) is False
+        assert store.get_task("t1")["next_run"] == _NEXT
+
+    def test_stale_expected_next_run_fails(self, store):
+        store.save_task(_make_task(next_run=_NEXT))
+
+        assert self._claim(store, expected=_SLOT) is False
+        assert store.get_task("t1")["last_run"] is None
+
+    @pytest.mark.parametrize("status", ["paused", "cancelled", "completed"])
+    def test_inactive_task_cannot_be_claimed(self, store, status):
+        store.save_task(_make_task(next_run=_SLOT, status=status))
+
+        assert self._claim(store) is False
+        assert store.get_task("t1")["status"] == status
+
+    def test_missing_task_cannot_be_claimed(self, store):
+        assert self._claim(store) is False
+
+    def test_null_next_run_matches_null_expected(self, store):
+        store.save_task(_make_task(next_run=None))
+
+        assert self._claim(store, expected=None) is True
+
+    def test_null_expected_does_not_match_scheduled_task(self, store):
+        store.save_task(_make_task(next_run=_SLOT))
+
+        assert self._claim(store, expected=None) is False
+
+    def test_claim_can_complete_one_shot_task(self, store):
+        store.save_task(_make_task(next_run=_SLOT))
+
+        assert self._claim(store, next_run=None, status="completed") is True
+
+        got = store.get_task("t1")
+        assert got["next_run"] is None
+        assert got["status"] == "completed"
+
+
+class TestDefaultStorePath:
+    @staticmethod
+    def _config(db_path: str = ""):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(scheduler=SimpleNamespace(db_path=db_path))
+
+    def test_unset_path_follows_openjarvis_home(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("OPENJARVIS_HOME", str(tmp_path))
+
+        assert default_store_path(self._config()) == tmp_path / "scheduler.db"
+
+    def test_configured_path_expands_home(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("HOME", str(tmp_path))
+
+        got = default_store_path(self._config("~/sched.db"))
+
+        assert got == tmp_path / "sched.db"
